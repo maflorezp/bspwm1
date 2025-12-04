@@ -351,7 +351,9 @@ void focus_in(void *evt)
 			   pointer_follows_focus to prevent unwanted warping */
 			bool pff = pointer_follows_focus;
 			pointer_follows_focus = false;
+			auto_raise = false;
 			focus_node(mon, mon->desk, mon->desk->focus);
+			auto_raise = true;
 			pointer_follows_focus = pff;
 			return;
 		}
