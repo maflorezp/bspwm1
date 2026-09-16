@@ -311,6 +311,15 @@ bool grab_pointer(pointer_action_t pac)
 	return true;
 }
 
+void pointer_move_node(coordinates_t loc)
+{
+	if (loc.node == NULL || loc.node->client == NULL)
+		return;
+	bspwm_point_t pos;
+	query_pointer(NULL, &pos);
+	drag_node(loc, ACTION_MOVE, pos);
+}
+
 void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 {
 	node_t *n = loc.node;

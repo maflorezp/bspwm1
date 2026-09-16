@@ -1896,6 +1896,7 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 		SET_BOOL(ignore_ewmh_struts)
 		SET_BOOL(center_pseudo_tiled)
 		SET_BOOL(removal_adjustment)
+		SET_BOOL(allow_net_wm_moveresize)
 #undef SET_BOOL
 	} else if (streq("tile_limit_enabled", name)) {
 		bool b;
@@ -2117,6 +2118,7 @@ void get_setting(coordinates_t loc, char *name, FILE* rsp)
 	GET_BOOL(remove_unplugged_monitors)
 	GET_BOOL(merge_overlapping_monitors)
 	GET_BOOL(ignore_monitor_updates)
+	GET_BOOL(allow_net_wm_moveresize)
 #undef GET_BOOL
 	} else if (streq("tile_limit_enabled", name)) {
 		if (loc.desktop != NULL) {

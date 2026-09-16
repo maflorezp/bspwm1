@@ -43,6 +43,7 @@ int16_t modfield_from_keysym(uint32_t keysym);
 resize_handle_t get_handle(node_t *n, bspwm_point_t pos, pointer_action_t pac);
 bool grab_pointer(pointer_action_t pac);
 void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos);
+void pointer_move_node(coordinates_t loc);
 
 /* Windows-like edge snap drag preview. The zone geometry itself lives in
  * snap.c so that `bspc node --snap` can reach it on every backend. */

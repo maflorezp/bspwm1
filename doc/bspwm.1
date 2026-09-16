@@ -1498,6 +1498,13 @@ Block the fullscreen state transitions that originate from an EWMH request\&. Th
 Ignore strut hinting from clients requesting to reserve space (i\&.e\&. task bars)\&.
 .RE
 .PP
+\fIallow_net_wm_moveresize\fR
+.RS 4
+Let clients start a move of their own window with
+\fB_NET_WM_MOVERESIZE\fR, as applications that draw their own title bar do\&. Only moving is handled\&. Defaults to
+\fBtrue\fR\&.
+.RE
+.PP
 \fIcenter_pseudo_tiled\fR
 .RS 4
 Center pseudo tiled windows into their tiling rectangles\&. Defaults to

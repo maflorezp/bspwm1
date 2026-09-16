@@ -851,6 +851,9 @@ Global Settings
 'ignore_ewmh_struts'::
 	Ignore strut hinting from clients requesting to reserve space (i.e. task bars).
 
+'allow_net_wm_moveresize'::
+	Let clients start a move of their own window with *_NET_WM_MOVERESIZE*, as applications that draw their own title bar do. Only moving is handled. Defaults to *true*.
+
 'center_pseudo_tiled'::
 	Center pseudo tiled windows into their tiling rectangles. Defaults to 'true'.
 
