@@ -453,7 +453,9 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 		if (resp_type == XCB_MOTION_NOTIFY) {
 			xcb_motion_notify_event_t *e = (xcb_motion_notify_event_t*) evt;
 			uint32_t dtime = e->time - last_motion_time;
-			if (dtime < pointer_motion_interval)
+			uint32_t interval = pac == ACTION_MOVE ? pointer_motion_interval
+			                                       : pointer_motion_interval_resize;
+			if (dtime < interval)
 				continue;
 
 			last_motion_time = e->time;

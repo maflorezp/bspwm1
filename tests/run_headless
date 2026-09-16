@@ -418,6 +418,8 @@ done
 
 . ./headless/no_raise_on_focus.sh
 
+. ./headless/resize_motion_interval.sh
+
 # ---- Quit ----
 
 echo ""
