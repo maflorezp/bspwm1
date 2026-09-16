@@ -830,6 +830,9 @@ Global Settings
 'magnet_threshold'::
 	While a floating window is moved or resized with the pointer, its edges stick to the edges of the work area and of the other windows on the desktop that come within this many pixels: edge against edge, or in line with the same edge of a neighbour. A window only attracts along one axis when it is next to the dragged one on the other axis. Keep dragging to pull free. *0* disables it. X11 only. Defaults to *0*.
 
+'edge_snap_zone_ratio'::
+	Size of the edge snap zones, as a fraction of the monitor, from *0* to *0.5*. Within this fraction of an edge's length from a corner, a drag snaps to that quarter of the monitor. On the top edge, a centered band this fraction of the width wide maximizes and the rest snaps to the top half; the bottom edge snaps to the bottom half and the sides to the left and right halves. Above *1/3* the corners take over the center band. *0* keeps the classic zones: a corner needs the pointer at both edges, the whole top edge maximizes and the bottom edge does nothing. Defaults to *0*.
+
 'cascade_offset'::
 	When bspwm centres a new floating window on its own initiative (because the window supplied no position), offset each successive one by this many pixels so they don't stack exactly on top of each other. Set to *0* to disable. Windows centred because a rule said *center=on* are never cascaded. Defaults to *20*.
 

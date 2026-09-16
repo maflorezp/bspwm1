@@ -81,6 +81,7 @@
 #define EDGE_SNAP_PREVIEW_COLOR     "#E6007A"
 #define EDGE_SNAP_PREVIEW_OPACITY   25
 #define MAGNET_THRESHOLD            0
+#define EDGE_SNAP_ZONE_RATIO        0.0
 #define RAISE_FLOATING_ON_CLICK     true
 #define CASCADE_OFFSET              20
 
@@ -139,6 +140,7 @@ extern int edge_snap_threshold;
 extern char edge_snap_preview_color[MAXLEN];
 extern int edge_snap_preview_opacity;
 extern int magnet_threshold;
+extern double edge_snap_zone_ratio;
 extern bool raise_floating_on_click;
 extern int cascade_offset;
 

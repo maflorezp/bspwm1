@@ -1453,6 +1453,19 @@ disables it\&. X11 only\&. Defaults to
 \fB0\fR\&.
 .RE
 .PP
+\fIedge_snap_zone_ratio\fR
+.RS 4
+Size of the edge snap zones, as a fraction of the monitor, from
+\fB0\fR
+to
+\fB0\&.5\fR\&. Within this fraction of an edge\(cqs length from a corner, a drag snaps to that quarter of the monitor\&. On the top edge, a centered band this fraction of the width wide maximizes and the rest snaps to the top half; the bottom edge snaps to the bottom half and the sides to the left and right halves\&. Above
+\fB1/3\fR
+the corners take over the center band\&.
+\fB0\fR
+keeps the classic zones: a corner needs the pointer at both edges, the whole top edge maximizes and the bottom edge does nothing\&. Defaults to
+\fB0\fR\&.
+.RE
+.PP
 \fIcascade_offset\fR
 .RS 4
 When bspwm centres a new floating window on its own initiative (because the window supplied no position), offset each successive one by this many pixels so they don\(cqt stack exactly on top of each other\&. Set to

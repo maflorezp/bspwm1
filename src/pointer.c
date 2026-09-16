@@ -630,6 +630,18 @@ void show_snap_preview(monitor_t *m, snap_zone_t zone)
 			preview.width = rect.width / 2;
 			preview.height = rect.height;
 			break;
+		case SNAP_TOP:
+			preview.x = rect.x;
+			preview.y = rect.y;
+			preview.width = rect.width;
+			preview.height = rect.height / 2;
+			break;
+		case SNAP_BOTTOM:
+			preview.x = rect.x;
+			preview.y = rect.y + rect.height / 2;
+			preview.width = rect.width;
+			preview.height = rect.height / 2;
+			break;
 		case SNAP_TOP_LEFT:
 			preview.x = rect.x;
 			preview.y = rect.y;

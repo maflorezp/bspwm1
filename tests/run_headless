@@ -414,6 +414,8 @@ done
 
 . ./headless/magnet.sh
 
+. ./headless/edge_snap_zones.sh
+
 # ---- Quit ----
 
 echo ""
