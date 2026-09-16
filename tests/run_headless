@@ -408,6 +408,8 @@ for bcfg in borderless_monocle gapless_monocle focus_follows_pointer; do
 	assert_ok "get $bcfg" $BSPC config $bcfg
 done
 
+. ./headless/iconify.sh
+
 # ---- Quit ----
 
 echo ""
