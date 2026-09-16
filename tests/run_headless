@@ -161,6 +161,8 @@ assert_fail() {
 	fi
 }
 
+. ./headless/drag.sh
+
 # ---- TESTS ----
 
 echo ""
