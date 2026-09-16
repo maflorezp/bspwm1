@@ -365,6 +365,56 @@ static magnet_box_t magnet_snap_node(coordinates_t *loc, magnet_box_t free, unsi
 	return magnet_result(&mg);
 }
 
+/* One resize step with magnetic edges. `free` holds where the dragged edges
+ * would be without the magnet and is advanced by this motion first. */
+static void magnet_resize(coordinates_t *loc, resize_handle_t rh, magnet_box_t *free,
+                          int root_x, int root_y, int dx, int dy, bool absolute)
+{
+	int b = 2 * (int) loc->node->client->border_width;
+	if (absolute) {
+		/* resize_client puts the outer left/top edge and the inner
+		 * right/bottom edge at the pointer. */
+		if (rh & HANDLE_LEFT)
+			free->x1 = root_x;
+		if (rh & HANDLE_RIGHT)
+			free->x2 = root_x + b;
+		if (rh & HANDLE_TOP)
+			free->y1 = root_y;
+		if (rh & HANDLE_BOTTOM)
+			free->y2 = root_y + b;
+	} else {
+		if (rh & HANDLE_LEFT)
+			free->x1 += dx;
+		if (rh & HANDLE_RIGHT)
+			free->x2 += dx;
+		if (rh & HANDLE_TOP)
+			free->y1 += dy;
+		if (rh & HANDLE_BOTTOM)
+			free->y2 += dy;
+	}
+
+	magnet_box_t want = magnet_snap_node(loc, *free, (unsigned int) rh);
+
+	if (absolute) {
+		int ax = (rh & HANDLE_LEFT) ? want.x1 : want.x2 - b;
+		int ay = (rh & HANDLE_TOP) ? want.y1 : want.y2 - b;
+		resize_client(loc, rh, ax, ay, false);
+		return;
+	}
+
+	magnet_box_t cur = magnet_box_of(loc->node);
+	int ddx = 0, ddy = 0;
+	if (rh & HANDLE_LEFT)
+		ddx = want.x1 - cur.x1;
+	else if (rh & HANDLE_RIGHT)
+		ddx = want.x2 - cur.x2;
+	if (rh & HANDLE_TOP)
+		ddy = want.y1 - cur.y1;
+	else if (rh & HANDLE_BOTTOM)
+		ddy = want.y2 - cur.y2;
+	resize_client(loc, rh, ddx, ddy, true);
+}
+
 void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 {
 	node_t *n = loc.node;
@@ -436,7 +486,11 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 				}
 			} else if (n && n->client) {
 				client_t *c = n->client;
-				if (SHOULD_HONOR_SIZE_HINTS(c->honor_size_hints, c->state)) {
+				bool absolute = SHOULD_HONOR_SIZE_HINTS(c->honor_size_hints, c->state);
+				if (magnet_on) {
+					magnet_resize(&loc, rh, &magnet_free, e->root_x, e->root_y,
+					              dx, dy, absolute);
+				} else if (absolute) {
 					resize_client(&loc, rh, e->root_x, e->root_y, false);
 				} else {
 					resize_client(&loc, rh, dx, dy, true);
