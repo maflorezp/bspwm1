@@ -313,10 +313,24 @@ bool grab_pointer(pointer_action_t pac)
 
 void pointer_move_node(coordinates_t loc)
 {
-	if (loc.node == NULL || loc.node->client == NULL)
+	/* Ignore requests during a drag and for windows that are not shown. */
+	if (grabbing || loc.node == NULL || loc.node->client == NULL ||
+	    loc.desktop != loc.monitor->desk)
 		return;
-	bspwm_point_t pos;
-	query_pointer(NULL, &pos);
+
+	xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(dpy,
+		xcb_query_pointer(dpy, root), NULL);
+	if (qpr == NULL)
+		return;
+	/* The request follows a button press: with every button already up, no
+	 * release would ever end the drag. */
+	bool held = qpr->mask & (XCB_KEY_BUT_MASK_BUTTON_1 | XCB_KEY_BUT_MASK_BUTTON_2 |
+	                         XCB_KEY_BUT_MASK_BUTTON_3 | XCB_KEY_BUT_MASK_BUTTON_4 |
+	                         XCB_KEY_BUT_MASK_BUTTON_5);
+	bspwm_point_t pos = {qpr->root_x, qpr->root_y};
+	free(qpr);
+	if (!held)
+		return;
 	drag_node(loc, ACTION_MOVE, pos);
 }
 
