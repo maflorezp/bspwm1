@@ -43,4 +43,11 @@
  * Pure geometry, so the unit tests drive it without a display. */
 snap_zone_t edge_zone_at(int x, int y, bspwm_rect_t r, int threshold, double ratio);
 
+/* Rectangle for a window snapped to `zone` in the work area `area`: the
+ * position of its outer corner and its inner size, so that with a border of
+ * `border` pixels the whole window fills the zone and stays inside the area.
+ * Of two halves of an odd length, the second one gets the extra pixel.
+ * SNAP_MAXIMIZE fills the area and SNAP_NONE gives an empty rectangle. */
+bspwm_rect_t edge_zone_rect(bspwm_rect_t area, snap_zone_t zone, unsigned int border);
+
 #endif

@@ -35,6 +35,7 @@
 #include "events.h"
 #include "window.h"
 #include "snap.h"
+#include "edge_zone.h"
 #include "pointer.h"
 #include "color.h"
 #include "magnet.h"
@@ -647,63 +648,11 @@ void show_snap_preview(monitor_t *m, snap_zone_t zone)
 	rect.width = (pad_h < rect.width) ? rect.width - pad_h : 1;
 	rect.height = (pad_v < rect.height) ? rect.height - pad_v : 1;
 
-	bspwm_rect_t preview = {0, 0, 0, 0};
-
-	switch (zone) {
-		case SNAP_LEFT:
-			preview.x = rect.x;
-			preview.y = rect.y;
-			preview.width = rect.width / 2;
-			preview.height = rect.height;
-			break;
-		case SNAP_RIGHT:
-			preview.x = rect.x + rect.width / 2;
-			preview.y = rect.y;
-			preview.width = rect.width / 2;
-			preview.height = rect.height;
-			break;
-		case SNAP_TOP:
-			preview.x = rect.x;
-			preview.y = rect.y;
-			preview.width = rect.width;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM:
-			preview.x = rect.x;
-			preview.y = rect.y + rect.height / 2;
-			preview.width = rect.width;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_TOP_LEFT:
-			preview.x = rect.x;
-			preview.y = rect.y;
-			preview.width = rect.width / 2;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_TOP_RIGHT:
-			preview.x = rect.x + rect.width / 2;
-			preview.y = rect.y;
-			preview.width = rect.width / 2;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM_LEFT:
-			preview.x = rect.x;
-			preview.y = rect.y + rect.height / 2;
-			preview.width = rect.width / 2;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM_RIGHT:
-			preview.x = rect.x + rect.width / 2;
-			preview.y = rect.y + rect.height / 2;
-			preview.width = rect.width / 2;
-			preview.height = rect.height / 2;
-			break;
-		case SNAP_MAXIMIZE:
-			preview = rect;
-			break;
-		default:
-			hide_snap_preview();
-			return;
+	/* The preview window has a 2 px border, as created below. */
+	bspwm_rect_t preview = edge_zone_rect(rect, zone, 2);
+	if (preview.width == 0) {
+		hide_snap_preview();
+		return;
 	}
 
 	/* Create or update preview window */
