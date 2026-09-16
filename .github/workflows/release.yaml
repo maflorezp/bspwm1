@@ -34,6 +34,7 @@ jobs:
         # exits and every window-management test sees an empty tree.
         pacman -Syu --noconfirm base-devel git libxcb xcb-util xcb-util-keysyms \
           xcb-util-wm libxkbcommon wayland xorg-server-xvfb xorg-fonts-misc \
+          xdotool xorg-xwininfo xorg-xwd \
           wlroots0.20 wayland-protocols wlr-protocols pixman libdrm xorg-xwayland
     - name: Build X11 backend
       run: make
