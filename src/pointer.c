@@ -372,8 +372,9 @@ static void magnet_resize(coordinates_t *loc, resize_handle_t rh, magnet_box_t *
 {
 	int b = 2 * (int) loc->node->client->border_width;
 	if (absolute) {
-		/* resize_client puts the outer left/top edge and the inner
-		 * right/bottom edge at the pointer. */
+		/* resize_client puts the outer left/top edge at the pointer, and
+		 * x + width (y + height) for the right (bottom) edge, which is the
+		 * outer edge minus both borders. */
 		if (rh & HANDLE_LEFT)
 			free->x1 = root_x;
 		if (rh & HANDLE_RIGHT)
