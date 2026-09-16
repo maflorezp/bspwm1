@@ -98,5 +98,45 @@ int main(void)
 	      (magnet_box_t) {300, 300, 1043, 604},
 	      snap((magnet_box_t) {300, 300, 1043, 604}, MAGNET_RIGHT, &right_of, 1, 20));
 
+	/* Edges hidden under windows stacked above. */
+	magnet_t hid;
+	const magnet_box_t under = {500, 300, 1104, 704};
+	const magnet_box_t cover = {300, 200, 1304, 904};
+	magnet_begin(&hid, (magnet_box_t) {1110, 400, 1314, 554}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, &cover, 1);
+	check("an edge under a window above does not attract",
+	      (magnet_box_t) {1110, 400, 1314, 554}, magnet_result(&hid));
+
+	magnet_begin(&hid, (magnet_box_t) {1110, 400, 1314, 554}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, NULL, 0);
+	check("the same edge with nothing above attracts",
+	      (magnet_box_t) {1104, 400, 1308, 554}, magnet_result(&hid));
+
+	/* Only the top of the right edge of `under` shows: [300, 500). */
+	const magnet_box_t lower_cover = {900, 500, 1300, 900};
+	magnet_begin(&hid, (magnet_box_t) {1110, 400, 1314, 450}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, &lower_cover, 1);
+	check("a window next to the visible part of an edge sticks to it",
+	      (magnet_box_t) {1104, 400, 1308, 450}, magnet_result(&hid));
+
+	magnet_begin(&hid, (magnet_box_t) {1110, 600, 1314, 680}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, &lower_cover, 1);
+	check("a window next to the hidden part of an edge does not",
+	      (magnet_box_t) {1110, 600, 1314, 680}, magnet_result(&hid));
+
+	/* Monocle: a window of the same size on top hides all four edges,
+	 * the right and bottom ones included. */
+	magnet_begin(&hid, (magnet_box_t) {1110, 400, 1314, 554}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, &under, 1);
+	check("a window of the same size above hides every edge",
+	      (magnet_box_t) {1110, 400, 1314, 554}, magnet_result(&hid));
+
+	/* A window above that only touches the edge from outside leaves it visible. */
+	const magnet_box_t beside = {1104, 300, 1400, 704};
+	magnet_begin(&hid, (magnet_box_t) {1110, 400, 1314, 554}, MAGNET_ALL, area, 20);
+	magnet_consider_visible(&hid, under, &beside, 1);
+	check("a window above next to an edge does not hide it",
+	      (magnet_box_t) {1104, 400, 1308, 554}, magnet_result(&hid));
+
 	return failures ? 1 : 0;
 }
