@@ -416,6 +416,8 @@ done
 
 . ./headless/edge_snap_zones.sh
 
+. ./headless/no_raise_on_focus.sh
+
 # ---- Quit ----
 
 echo ""
