@@ -12,6 +12,8 @@ assert_eq "zone ratio was set" "0.200000" "$($BSPC config edge_snap_zone_ratio 2
 assert_fail "reject a zone ratio above 0.5" $BSPC config edge_snap_zone_ratio 0.6
 assert_fail "reject a negative zone ratio" $BSPC config edge_snap_zone_ratio -0.1
 assert_fail "reject a zone ratio that is not a number" $BSPC config edge_snap_zone_ratio wide
+assert_fail "reject a zone ratio that is NaN" $BSPC config edge_snap_zone_ratio nan
+assert_eq "a rejected zone ratio keeps the previous value" "0.200000" "$($BSPC config edge_snap_zone_ratio 2>/dev/null)"
 
 node_state() {
 	$BSPC query -T -n "$1" 2>/dev/null | grep -o '"state":"[a-z_]*"' | head -1 | cut -d'"' -f4
