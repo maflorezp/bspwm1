@@ -218,6 +218,49 @@ resize_handle_t get_handle(node_t *n, bspwm_point_t pos, pointer_action_t pac)
 	return rh;
 }
 
+/* Grab the pointer and run a move or resize of `loc.node` until the button is
+ * released. Shared by the pointer bindings and by clients that ask to be
+ * moved through _NET_WM_MOVERESIZE. */
+static void drag_node(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
+{
+	if (loc.node->client->state == STATE_FULLSCREEN)
+		return;
+
+	xcb_grab_pointer_reply_t *reply = xcb_grab_pointer_reply(dpy,
+		xcb_grab_pointer(dpy, 0, root,
+		                 XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_MOTION,
+		                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+		                 BSPWM_WID_NONE, BSPWM_WID_NONE, XCB_CURRENT_TIME), NULL);
+
+	if (!reply || reply->status != XCB_GRAB_STATUS_SUCCESS) {
+		free(reply);
+		return;
+	}
+	free(reply);
+
+	/* Windows-like behavior: drag/resize raises the window to the top.
+	 * Route through bspwm's own focus/stack machinery so the internal
+	 * stacking list stays in sync with the X stack. */
+	if (loc.node != mon->desk->focus) {
+		focus_node(loc.monitor, loc.desktop, loc.node);
+	} else {
+		stack(loc.desktop, loc.node, true);
+	}
+
+	if (pac == ACTION_MOVE) {
+		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X move begin\n",
+		          loc.monitor->id, loc.desktop->id, loc.node->id);
+	} else if (pac == ACTION_RESIZE_CORNER) {
+		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X resize_corner begin\n",
+		          loc.monitor->id, loc.desktop->id, loc.node->id);
+	} else if (pac == ACTION_RESIZE_SIDE) {
+		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X resize_side begin\n",
+		          loc.monitor->id, loc.desktop->id, loc.node->id);
+	}
+
+	track_pointer(loc, pac, pos);
+}
+
 bool grab_pointer(pointer_action_t pac)
 {
 	bspwm_wid_t win = BSPWM_WID_NONE;
@@ -264,43 +307,7 @@ bool grab_pointer(pointer_action_t pac)
 		return focused;
 	}
 
-	if (loc.node->client->state == STATE_FULLSCREEN)
-		return true;
-
-	xcb_grab_pointer_reply_t *reply = xcb_grab_pointer_reply(dpy, 
-		xcb_grab_pointer(dpy, 0, root, 
-		                 XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_MOTION,
-		                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
-		                 BSPWM_WID_NONE, BSPWM_WID_NONE, XCB_CURRENT_TIME), NULL);
-
-	if (!reply || reply->status != XCB_GRAB_STATUS_SUCCESS) {
-		free(reply);
-		return true;
-	}
-	free(reply);
-
-	/* Windows-like behavior: drag/resize raises the window to the top.
-	 * Route through bspwm's own focus/stack machinery so the internal
-	 * stacking list stays in sync with the X stack. */
-	if (loc.node != mon->desk->focus) {
-		focus_node(loc.monitor, loc.desktop, loc.node);
-	} else {
-		stack(loc.desktop, loc.node, true);
-	}
-
-	if (pac == ACTION_MOVE) {
-		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X move begin\n",
-		          loc.monitor->id, loc.desktop->id, loc.node->id);
-	} else if (pac == ACTION_RESIZE_CORNER) {
-		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X resize_corner begin\n",
-		          loc.monitor->id, loc.desktop->id, loc.node->id);
-	} else if (pac == ACTION_RESIZE_SIDE) {
-		put_status(SBSC_MASK_POINTER_ACTION, "pointer_action 0x%08X 0x%08X 0x%08X resize_side begin\n",
-		          loc.monitor->id, loc.desktop->id, loc.node->id);
-	}
-
-	track_pointer(loc, pac, pos);
-
+	drag_node(loc, pac, pos);
 	return true;
 }
 
