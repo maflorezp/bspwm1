@@ -83,6 +83,12 @@ if drag_tools_available; then
 	$BSPC node "$W" -c
 	sleep 0.3
 
+	# The window, border included, stays inside the screen.
+	W=$(zone_drop zone-fit 1917 1077)
+	assert_eq "a snapped window fits in its quarter" "960 540 956 536" "$(win_geom "$W")"
+	$BSPC node "$W" -c
+	sleep 0.3
+
 	W=$(zone_drop zone-side-corner 2 1000)
 	assert_eq "a side near a corner gives that quarter" "$(zone_reference bottom_left)" "$(win_geom "$W")"
 	$BSPC node "$W" -c
@@ -93,7 +99,7 @@ if drag_tools_available; then
 	drag_begin 1 960 540
 	drag_to 500 2
 	P=$(zone_preview)
-	assert_eq "the preview shows the top half" "0 0 1920 540" "$(win_geom "$P")"
+	assert_eq "the preview shows the top half" "0 0 1916 536" "$(win_geom "$P")"
 	drag_end 1
 	$BSPC node "$W" -c
 	sleep 0.3

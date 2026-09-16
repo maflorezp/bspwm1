@@ -33,6 +33,19 @@ static void check(const char *desc, snap_zone_t expected, snap_zone_t actual)
 	failures++;
 }
 
+static void check_rect(const char *desc, bspwm_rect_t expected, bspwm_rect_t actual)
+{
+	if (expected.x == actual.x && expected.y == actual.y &&
+	    expected.width == actual.width && expected.height == actual.height) {
+		printf("  PASS: %s\n", desc);
+		return;
+	}
+	printf("  FAIL: %s: expected %ux%u+%d+%d, got %ux%u+%d+%d\n", desc,
+	       expected.width, expected.height, expected.x, expected.y,
+	       actual.width, actual.height, actual.x, actual.y);
+	failures++;
+}
+
 int main(void)
 {
 	const bspwm_rect_t wide = {0, 0, 1920, 1080};
@@ -104,6 +117,33 @@ int main(void)
 	      SNAP_TOP_LEFT, edge_zone_at(2, 2, wide, 20, 0.0));
 	check("classic: bottom-right corner",
 	      SNAP_BOTTOM_RIGHT, edge_zone_at(1917, 1077, wide, 20, 0.0));
+
+	/* Zone rectangles: outer corner and inner size, so that the window with
+	 * its border fills the zone exactly. */
+	check_rect("left half, border 2",
+	           (bspwm_rect_t) {0, 0, 956, 1076}, edge_zone_rect(wide, SNAP_LEFT, 2));
+	check_rect("right half, border 2",
+	           (bspwm_rect_t) {960, 0, 956, 1076}, edge_zone_rect(wide, SNAP_RIGHT, 2));
+	check_rect("top-left quarter, border 2",
+	           (bspwm_rect_t) {0, 0, 956, 536}, edge_zone_rect(wide, SNAP_TOP_LEFT, 2));
+	check_rect("bottom-right quarter, border 2",
+	           (bspwm_rect_t) {960, 540, 956, 536}, edge_zone_rect(wide, SNAP_BOTTOM_RIGHT, 2));
+	check_rect("maximize fills the area, border 2",
+	           (bspwm_rect_t) {0, 0, 1916, 1076}, edge_zone_rect(wide, SNAP_MAXIMIZE, 2));
+	check_rect("no border: exact halves",
+	           (bspwm_rect_t) {960, 0, 960, 1080}, edge_zone_rect(wide, SNAP_RIGHT, 0));
+	check_rect("no zone: empty",
+	           (bspwm_rect_t) {0, 0, 0, 0}, edge_zone_rect(wide, SNAP_NONE, 2));
+
+	/* A 4K work area with panels: 2093 rows, so the bottom half takes the
+	 * odd one and ends on the last row of the area (35 + 2093). */
+	const bspwm_rect_t panels = {0, 35, 3840, 2093};
+	check_rect("odd height: top half",
+	           (bspwm_rect_t) {0, 35, 3836, 1042}, edge_zone_rect(panels, SNAP_TOP, 2));
+	check_rect("odd height: bottom half takes the extra row",
+	           (bspwm_rect_t) {0, 1081, 3836, 1043}, edge_zone_rect(panels, SNAP_BOTTOM, 2));
+	check_rect("offset monitor: bottom-right quarter",
+	           (bspwm_rect_t) {4560, 1280, 716, 1276}, edge_zone_rect(tall, SNAP_BOTTOM_RIGHT, 2));
 
 	return failures ? 1 : 0;
 }
