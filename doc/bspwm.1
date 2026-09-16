@@ -1364,6 +1364,12 @@ Remove borders of the only window on the only monitor regardless its layout\&.
 The minimum interval, in milliseconds, between two motion notify events\&.
 .RE
 .PP
+\fIpointer_motion_interval_resize\fR
+.RS 4
+The minimum interval, in milliseconds, between two motion notify events while resizing a window\&. Lower it for applications that redraw slowly while being resized, without making moves jumpy\&. Defaults to
+\fB17\fR\&.
+.RE
+.PP
 \fIpointer_modifier\fR
 .RS 4
 Keyboard modifier used for moving or resizing windows\&. Accept the following values:
