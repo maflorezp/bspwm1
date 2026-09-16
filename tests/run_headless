@@ -424,6 +424,8 @@ done
 
 . ./headless/net_wm_moveresize.sh
 
+. ./headless/transfer_focus.sh
+
 # ---- Quit ----
 
 echo ""
