@@ -63,6 +63,7 @@ xcb_ewmh_connection_t *ewmh;
 xcb_atom_t WM_STATE;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_DELETE_WINDOW;
+xcb_atom_t WM_CHANGE_STATE;
 
 uint8_t randr_base;
 
@@ -751,6 +752,7 @@ void x11_setup_atoms(void)
 	get_atom("WM_STATE", &WM_STATE);
 	get_atom("WM_DELETE_WINDOW", &WM_DELETE_WINDOW);
 	get_atom("WM_TAKE_FOCUS", &WM_TAKE_FOCUS);
+	get_atom("WM_CHANGE_STATE", &WM_CHANGE_STATE);
 }
 
 void x11_setup_randr(void)

@@ -315,6 +315,8 @@ void client_message(void *evt)
 		    (mon && mon->desk && loc.node == mon->desk->focus)) {
 			return;
 		}
+		set_hidden(loc.monitor, loc.desktop, loc.node, false);
+		arrange(loc.monitor, loc.desktop);
 		focus_node(loc.monitor, loc.desktop, loc.node);
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 		coordinates_t dloc;
@@ -326,6 +328,12 @@ void client_message(void *evt)
 		}
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		close_node(loc.node);
+	} else if (e->type == WM_CHANGE_STATE) {
+		/* XIconifyWindow() from the client, or a task bar minimizing it. */
+		bool iconic = e->data.data32[0] == XCB_ICCCM_WM_STATE_ICONIC ||
+		              e->data.data32[0] == XCB_ICCCM_WM_STATE_WITHDRAWN;
+		set_hidden(loc.monitor, loc.desktop, loc.node, iconic);
+		arrange(loc.monitor, loc.desktop);
 	}
 }
 

@@ -420,6 +420,8 @@ done
 
 . ./headless/resize_motion_interval.sh
 
+. ./headless/iconify.sh
+
 # ---- Quit ----
 
 echo ""
