@@ -2165,7 +2165,9 @@ bool transfer_node(monitor_t *ms, desktop_t *ds, node_t *ns, monitor_t *md, desk
 
 	unlink_node(ms, ds, ns);
 
-	if (last_ds_focus && last_focus_id != 0) {
+	/* find_by_id cannot see a focus inside the moved node, which is out of
+	 * the tree until insert_node below; that focus is still valid. */
+	if (last_ds_focus && last_focus_id != 0 && !is_descendant(last_ds_focus, ns)) {
 		coordinates_t loc;
 		if (!find_by_id(last_focus_id, &loc) || loc.node != last_ds_focus) {
 			last_ds_focus = NULL;
