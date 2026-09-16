@@ -83,6 +83,7 @@ char edge_snap_preview_color[MAXLEN];
 int edge_snap_preview_opacity;
 int magnet_threshold;
 double edge_snap_zone_ratio;
+bool allow_net_wm_moveresize;
 bool raise_floating_on_click;
 int cascade_offset;
 
@@ -160,6 +161,7 @@ void load_settings(void)
 	edge_snap_preview_opacity = EDGE_SNAP_PREVIEW_OPACITY;
 	magnet_threshold = MAGNET_THRESHOLD;
 	edge_snap_zone_ratio = EDGE_SNAP_ZONE_RATIO;
+	allow_net_wm_moveresize = ALLOW_NET_WM_MOVERESIZE;
 	raise_floating_on_click = RAISE_FLOATING_ON_CLICK;
 	cascade_offset = CASCADE_OFFSET;
 }

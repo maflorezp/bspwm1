@@ -11,6 +11,7 @@ tests/test_stress
 tests/test_color
 tests/test_magnet
 tests/test_edge_zone
+tests/send_moveresize
 
 # Arch packaging build artifacts (makepkg output)
 pkg/arch/bspwm1/

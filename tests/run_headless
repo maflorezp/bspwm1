@@ -422,6 +422,8 @@ done
 
 . ./headless/iconify.sh
 
+. ./headless/net_wm_moveresize.sh
+
 # ---- Quit ----
 
 echo ""

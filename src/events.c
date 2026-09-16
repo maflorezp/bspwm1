@@ -326,6 +326,11 @@ void client_message(void *evt)
 				             dloc.desktop, dloc.desktop->focus, false);
 			}
 		}
+	} else if (e->type == ewmh->_NET_WM_MOVERESIZE) {
+		/* Clients that draw their own title bar ask the window manager to
+		 * drag them. Only moving is handled. */
+		if (allow_net_wm_moveresize && e->data.data32[2] == XCB_EWMH_WM_MOVERESIZE_MOVE)
+			pointer_move_node(loc);
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		close_node(loc.node);
 	} else if (e->type == WM_CHANGE_STATE) {
