@@ -26,6 +26,7 @@
 #define BSPWM_MAGNET_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Magnetic edges: while a floating window is dragged, its edges stick to the
  * edges of the work area and of the other windows that come within
@@ -66,6 +67,11 @@ typedef struct {
 void magnet_begin(magnet_t *mg, magnet_box_t free, unsigned int edges,
                   magnet_box_t area, int threshold);
 void magnet_consider(magnet_t *mg, magnet_box_t other);
+/* magnet_consider() for a window with `n` others stacked over it, given in
+ * `above`: the stretches of its edges under them do not count, because a
+ * window would stick to a line the user cannot see. */
+void magnet_consider_visible(magnet_t *mg, magnet_box_t other,
+                             const magnet_box_t *above, size_t n);
 magnet_box_t magnet_result(const magnet_t *mg);
 
 #endif
