@@ -36,6 +36,7 @@
 #include "window.h"
 #include "snap.h"
 #include "pointer.h"
+#include "color.h"
 
 uint16_t num_lock;
 uint16_t caps_lock;
@@ -46,6 +47,7 @@ node_t *grabbed_node;
 
 /* Snap preview window */
 static bspwm_wid_t snap_preview_win = BSPWM_WID_NONE;
+static xcb_colormap_t snap_preview_cmap = XCB_NONE;
 static snap_zone_t current_snap_zone = SNAP_NONE;
 static monitor_t *snap_target_monitor = NULL;
 
@@ -441,6 +443,22 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 	}
 }
 
+/* A 32-bit TrueColor visual, so a compositor can blend the preview, or NULL
+ * when the screen has none. */
+static xcb_visualtype_t *find_argb_visual(void)
+{
+	xcb_depth_iterator_t di = xcb_screen_allowed_depths_iterator(screen);
+	for (; di.rem; xcb_depth_next(&di)) {
+		if (di.data->depth != 32)
+			continue;
+		xcb_visualtype_iterator_t vi = xcb_depth_visuals_iterator(di.data);
+		for (; vi.rem; xcb_visualtype_next(&vi))
+			if (vi.data->_class == XCB_VISUAL_CLASS_TRUE_COLOR)
+				return vi.data;
+	}
+	return NULL;
+}
+
 /*
  * Show a preview overlay for the snap zone
  */
@@ -516,12 +534,32 @@ void show_snap_preview(monitor_t *m, snap_zone_t zone)
 	/* Create or update preview window */
 	if (snap_preview_win == BSPWM_WID_NONE) {
 		snap_preview_win = xcb_generate_id(dpy);
-		uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT;
-		uint32_t values[] = {0x40E6007A, 0xE6007A, 1};  /* Semi-transparent pink */
-		xcb_create_window(dpy, XCB_COPY_FROM_PARENT, snap_preview_win, root,
-		                  preview.x, preview.y, preview.width, preview.height,
-		                  2, XCB_WINDOW_CLASS_INPUT_OUTPUT,
-		                  XCB_COPY_FROM_PARENT, mask, values);
+		uint32_t rgb = backend_get_color_pixel(edge_snap_preview_color) & 0xFFFFFF;
+		xcb_visualtype_t *argb = find_argb_visual();
+		if (argb != NULL) {
+			/* A window on a depth other than its parent's needs its own
+			 * colormap and an explicit border pixel. */
+			snap_preview_cmap = xcb_generate_id(dpy);
+			xcb_create_colormap(dpy, XCB_COLORMAP_ALLOC_NONE, snap_preview_cmap,
+			                    root, argb->visual_id);
+			uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+			                XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
+			uint32_t values[] = {
+				color_premultiply(rgb, (unsigned int) edge_snap_preview_opacity),
+				0xFF000000 | rgb, 1, snap_preview_cmap
+			};
+			xcb_create_window(dpy, 32, snap_preview_win, root,
+			                  preview.x, preview.y, preview.width, preview.height,
+			                  2, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			                  argb->visual_id, mask, values);
+		} else {
+			uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT;
+			uint32_t values[] = {rgb, rgb, 1};
+			xcb_create_window(dpy, XCB_COPY_FROM_PARENT, snap_preview_win, root,
+			                  preview.x, preview.y, preview.width, preview.height,
+			                  2, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			                  XCB_COPY_FROM_PARENT, mask, values);
+		}
 	}
 
 	/* Position and show */
@@ -554,8 +592,12 @@ void destroy_snap_preview(void)
 	if (snap_preview_win != BSPWM_WID_NONE) {
 		xcb_destroy_window(dpy, snap_preview_win);
 		snap_preview_win = BSPWM_WID_NONE;
-		xcb_flush(dpy);
 	}
+	if (snap_preview_cmap != XCB_NONE) {
+		xcb_free_colormap(dpy, snap_preview_cmap);
+		snap_preview_cmap = XCB_NONE;
+	}
+	xcb_flush(dpy);
 	current_snap_zone = SNAP_NONE;
 	snap_target_monitor = NULL;
 }

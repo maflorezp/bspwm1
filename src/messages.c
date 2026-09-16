@@ -1763,6 +1763,7 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 	SET_COLOR(active_border_color)
 	SET_COLOR(focused_border_color)
 	SET_COLOR(presel_feedback_color)
+	SET_COLOR(edge_snap_preview_color)
 #undef SET_COLOR
 	} else if (streq("initial_polarity", name)) {
 		child_polarity_t p;
@@ -1961,6 +1962,13 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 			return;
 		}
 		edge_snap_threshold = t;
+	} else if (streq("edge_snap_preview_opacity", name)) {
+		int o;
+		if (sscanf(value, "%i", &o) != 1 || o < 0 || o > 100) {
+			fail(rsp, "config: %s: Invalid value: '%s' (must be 0-100).\n", name, value);
+			return;
+		}
+		edge_snap_preview_opacity = o;
 	} else if (streq("raise_floating_on_click", name)) {
 		bool b;
 		if (!parse_bool(value, &b)) {
@@ -2096,6 +2104,7 @@ void get_setting(coordinates_t loc, char *name, FILE* rsp)
 	GET_COLOR(active_border_color)
 	GET_COLOR(focused_border_color)
 	GET_COLOR(presel_feedback_color)
+	GET_COLOR(edge_snap_preview_color)
 #undef GET_COLOR
 #define GET_BOOL(s) \
 	} else if (streq(#s, name)) { \
@@ -2134,6 +2143,8 @@ void get_setting(coordinates_t loc, char *name, FILE* rsp)
 		fprintf(rsp, "%s", BOOL_STR(edge_snap_enabled));
 	} else if (streq("edge_snap_threshold", name)) {
 		fprintf(rsp, "%i", edge_snap_threshold);
+	} else if (streq("edge_snap_preview_opacity", name)) {
+		fprintf(rsp, "%i", edge_snap_preview_opacity);
 	} else if (streq("raise_floating_on_click", name)) {
 		fprintf(rsp, "%s", BOOL_STR(raise_floating_on_click));
 	} else if (streq("cascade_offset", name)) {

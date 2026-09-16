@@ -161,6 +161,8 @@ assert_fail() {
 	fi
 }
 
+. ./headless/drag.sh
+
 # ---- TESTS ----
 
 echo ""
@@ -407,6 +409,8 @@ assert_ok "restore split_ratio" $BSPC config split_ratio 0.5
 for bcfg in borderless_monocle gapless_monocle focus_follows_pointer; do
 	assert_ok "get $bcfg" $BSPC config $bcfg
 done
+
+. ./headless/edge_snap_preview.sh
 
 # ---- Quit ----
 
