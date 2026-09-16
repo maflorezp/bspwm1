@@ -35,6 +35,26 @@ if drag_tools_available && [ -x ./send_moveresize ]; then
 	sleep 0.3
 	$BSPC config allow_net_wm_moveresize true || true
 
+	# A request with no button held must not leave the pointer grabbed.
+	./send_moveresize "$W" 100 100 8 1
+	sleep 0.3
+	assert_ok "bspc answers after a move request with no button held" timeout 2 $BSPC query -N -n focused
+	# Release a grab left behind, so a failure here does not hang the rest.
+	xdotool click 1
+	sleep 0.3
+
+	# Only the move direction is handled.
+	xdotool mousemove 100 100
+	sleep 0.1
+	xdotool mousedown 1
+	./send_moveresize "$W" 100 100 4 1
+	sleep 0.3
+	xdotool mousemove 300 300
+	sleep 0.3
+	assert_eq "a client-initiated resize is ignored" "400 400 400 300" "$(win_geom "$W")"
+	xdotool mouseup 1
+	sleep 0.3
+
 	$BSPC node "$W" -c
 	sleep 0.3
 	$BSPC config edge_snap_enabled true
