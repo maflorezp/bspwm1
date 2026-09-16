@@ -115,6 +115,20 @@ if drag_tools_available; then
 	$BSPC node "$A" -c
 	sleep 0.3
 
+	# With size hints honoured the dragged edge follows the pointer itself;
+	# the magnet still applies.
+	$BSPC config honor_size_hints true
+	A=$(spawn_floating resize-hints 400x300+300+300)
+	drag_begin 2 690 450
+	drag_to 979 450
+	assert_eq "a side resized with size hints touches the window next to it" "300 300 696 300" "$(win_geom "$A")"
+	drag_to 1029 450
+	assert_eq "and pulls free again" "300 300 729 300" "$(win_geom "$A")"
+	drag_end 2
+	$BSPC node "$A" -c
+	sleep 0.3
+	$BSPC config honor_size_hints false
+
 	# Resizing a corner: both edges stick, each to its own target.
 	A=$(spawn_floating resize-corner 400x300+300+300)
 	drag_begin 3 680 580
@@ -133,14 +147,14 @@ if drag_tools_available; then
 	sleep 0.5
 	BEFORE=$(win_geom "$T1")
 	drag_begin 2 900 540
-	drag_to 950 540
+	drag_to 915 540
 	drag_end 2
 	WITH_MAGNET=$(win_geom "$T1")
 	$BSPC node @/ -r 0.5
 	sleep 0.3
 	$BSPC config magnet_threshold 0
 	drag_begin 2 900 540
-	drag_to 950 540
+	drag_to 915 540
 	drag_end 2
 	WITHOUT_MAGNET=$(win_geom "$T1")
 	assert_fail "the tiled resize actually changed the window" [ "$BEFORE" = "$WITH_MAGNET" ]
