@@ -1430,6 +1430,21 @@ Distance in pixels from a monitor edge at which a drag enters a snap zone\&. Def
 \fB20\fR\&.
 .RE
 .PP
+\fIedge_snap_preview_color\fR
+.RS 4
+Color of the region shown while a drag is in a snap zone\&. X11 only\&. Defaults to
+\fB#E6007A\fR\&.
+.RE
+.PP
+\fIedge_snap_preview_opacity\fR
+.RS 4
+Opacity of that region, from
+\fB0\fR
+to
+\fB100\fR\&. It only shows through with a compositor running; without one the region is drawn opaque\&. X11 only\&. Defaults to
+\fB25\fR\&.
+.RE
+.PP
 \fIcascade_offset\fR
 .RS 4
 When bspwm centres a new floating window on its own initiative (because the window supplied no position), offset each successive one by this many pixels so they don\(cqt stack exactly on top of each other\&. Set to

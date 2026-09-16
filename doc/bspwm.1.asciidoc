@@ -821,6 +821,12 @@ Global Settings
 'edge_snap_threshold'::
 	Distance in pixels from a monitor edge at which a drag enters a snap zone. Defaults to *20*.
 
+'edge_snap_preview_color'::
+	Color of the region shown while a drag is in a snap zone. X11 only. Defaults to *#E6007A*.
+
+'edge_snap_preview_opacity'::
+	Opacity of that region, from *0* to *100*. It only shows through with a compositor running; without one the region is drawn opaque. X11 only. Defaults to *25*.
+
 'cascade_offset'::
 	When bspwm centres a new floating window on its own initiative (because the window supplied no position), offset each successive one by this many pixels so they don't stack exactly on top of each other. Set to *0* to disable. Windows centred because a rule said *center=on* are never cascaded. Defaults to *20*.
 
