@@ -87,6 +87,19 @@ if drag_tools_available; then
 	sleep 0.3
 	$BSPC config edge_snap_enabled false
 
+	# An edge under another window does not attract: D is covered by C.
+	D=$(spawn_floating magnet-under 600x400+500+300)
+	C=$(spawn_floating magnet-cover 1000x700+300+200)
+	A=$(spawn_floating magnet-over 400x150+1500+400)
+	drag_begin 1 1700 475
+	drag_to 1310 475
+	assert_eq "a hidden edge does not attract a moved window" "1110 400 400 150" "$(win_geom "$A")"
+	drag_end 1
+	$BSPC node "$A" -c
+	$BSPC node "$C" -c
+	$BSPC node "$D" -c
+	sleep 0.3
+
 	# Crossing monitors: the window sticks to the monitor it moves onto.
 	MON=$($BSPC query -M -m focused)
 	$BSPC monitor "$MON" -g 960x1080+0+0

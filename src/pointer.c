@@ -53,6 +53,10 @@ static xcb_colormap_t snap_preview_cmap = XCB_NONE;
 static snap_zone_t current_snap_zone = SNAP_NONE;
 static monitor_t *snap_target_monitor = NULL;
 
+/* The root window's children, bottom first, as they were when the drag
+ * began; the magnet uses it to tell which window edges are on screen. */
+static xcb_query_tree_reply_t *magnet_stack = NULL;
+
 void pointer_init(void)
 {
 	num_lock = modfield_from_keysym(XK_Num_Lock);
@@ -368,6 +372,23 @@ static magnet_box_t magnet_area_of(monitor_t *m, desktop_t *d)
 	                       r.x + r.width - p.right, r.y + r.height - p.bottom};
 }
 
+/* Position of a window in magnet_stack, bottom first, or -1. */
+static int magnet_stack_index(bspwm_wid_t win)
+{
+	if (magnet_stack == NULL)
+		return -1;
+	xcb_window_t *wins = xcb_query_tree_children(magnet_stack);
+	int len = xcb_query_tree_children_length(magnet_stack);
+	for (int i = 0; i < len; i++)
+		if (wins[i] == win)
+			return i;
+	return -1;
+}
+
+/* At most this many windows of a desktop take part in the magnet; the rest
+ * neither attract nor cover. */
+#define MAGNET_MAX_WINDOWS 64
+
 /* Where the dragged window goes when the pointer alone would put it at `free`:
  * a magnet pass against the work area and the other visible windows. A move
  * is checked against the monitor the window is about to land on, so it
@@ -389,10 +410,25 @@ static magnet_box_t magnet_snap_node(coordinates_t *loc, magnet_box_t free, unsi
 	magnet_t mg;
 	magnet_begin(&mg, free, edges, magnet_area_of(m, d), magnet_threshold);
 	if (d != NULL) {
-		for (node_t *f = first_extrema(d->root); f != NULL; f = next_leaf(f, d->root)) {
-			if (f == loc->node || f->client == NULL || f->hidden)
+		/* Every other window on screen, with its place in the stack. */
+		magnet_box_t boxes[MAGNET_MAX_WINDOWS];
+		int levels[MAGNET_MAX_WINDOWS];
+		size_t count = 0;
+		for (node_t *f = first_extrema(d->root); f != NULL && count < MAGNET_MAX_WINDOWS;
+		     f = next_leaf(f, d->root)) {
+			if (f == loc->node || f->client == NULL || f->hidden || !f->client->shown)
 				continue;
-			magnet_consider(&mg, magnet_box_of(f));
+			boxes[count] = magnet_box_of(f);
+			levels[count] = magnet_stack_index(f->id);
+			count++;
+		}
+		for (size_t i = 0; i < count; i++) {
+			magnet_box_t above[MAGNET_MAX_WINDOWS];
+			size_t n = 0;
+			for (size_t j = 0; j < count; j++)
+				if (levels[j] > levels[i])
+					above[n++] = boxes[j];
+			magnet_consider_visible(&mg, boxes[i], above, n);
 		}
 	}
 	return magnet_result(&mg);
@@ -471,6 +507,8 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 	 * the magnet then adjusts on every motion. */
 	bool magnet_on = magnet_threshold > 0 && IS_FLOATING(n->client);
 	magnet_box_t magnet_free = magnet_on ? magnet_box_of(n) : (magnet_box_t) {0};
+	if (magnet_on)
+		magnet_stack = xcb_query_tree_reply(dpy, xcb_query_tree(dpy, root), NULL);
 
 	do {
 		free(evt);
@@ -566,6 +604,8 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 	snap_target_monitor = NULL;
 	
 	free(evt);
+	free(magnet_stack);
+	magnet_stack = NULL;
 	xcb_ungrab_pointer(dpy, XCB_CURRENT_TIME);
 
 	if (!grabbed_node) {

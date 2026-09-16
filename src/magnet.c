@@ -66,22 +66,52 @@ void magnet_begin(magnet_t *mg, magnet_box_t free, unsigned int edges,
 	offer(mg, SLOT_BOTTOM, free.y2, area.y2);
 }
 
-void magnet_consider(magnet_t *mg, magnet_box_t o)
+/* Offer to `slot` the edge line at `pos`, drawn over [s1, s2) along it, less
+ * the stretches the boxes in `above` cover. `px` is the pixel row or column of
+ * the line: `pos` itself for a left or top edge and `pos - 1` for a right or
+ * bottom one, whose coordinate is one past the box. */
+static void offer_line(magnet_t *mg, int slot, int edge, bool vertical, int pos, int px,
+                       int s1, int s2, const magnet_box_t *above, size_t n)
+{
+	for (; n > 0; above++, n--) {
+		int across1 = vertical ? above->x1 : above->y1;
+		int across2 = vertical ? above->x2 : above->y2;
+		int along1 = vertical ? above->y1 : above->x1;
+		int along2 = vertical ? above->y2 : above->x2;
+		if (px < across1 || px >= across2 || along2 <= s1 || along1 >= s2)
+			continue;
+		/* This box hides [along1, along2): offer what is left on each side. */
+		if (s1 < along1)
+			offer_line(mg, slot, edge, vertical, pos, px, s1, along1, above + 1, n - 1);
+		if (along2 < s2)
+			offer_line(mg, slot, edge, vertical, pos, px, along2, s2, above + 1, n - 1);
+		return;
+	}
+	magnet_box_t f = mg->free;
+	bool near = vertical ? spans_near(f.y1, f.y2, s1, s2, mg->threshold)
+	                     : spans_near(f.x1, f.x2, s1, s2, mg->threshold);
+	if (near)
+		offer(mg, slot, edge, pos);
+}
+
+void magnet_consider_visible(magnet_t *mg, magnet_box_t o, const magnet_box_t *above, size_t n)
 {
 	magnet_box_t f = mg->free;
-	if (spans_near(f.y1, f.y2, o.y1, o.y2, mg->threshold)) {
-		/* The same edge in line, or the opposite edges touching. */
-		offer(mg, SLOT_LEFT, f.x1, o.x1);
-		offer(mg, SLOT_LEFT, f.x1, o.x2);
-		offer(mg, SLOT_RIGHT, f.x2, o.x2);
-		offer(mg, SLOT_RIGHT, f.x2, o.x1);
-	}
-	if (spans_near(f.x1, f.x2, o.x1, o.x2, mg->threshold)) {
-		offer(mg, SLOT_TOP, f.y1, o.y1);
-		offer(mg, SLOT_TOP, f.y1, o.y2);
-		offer(mg, SLOT_BOTTOM, f.y2, o.y2);
-		offer(mg, SLOT_BOTTOM, f.y2, o.y1);
-	}
+	/* The same edge in line goes first, so it wins a tie against the
+	 * opposite edges touching. */
+	offer_line(mg, SLOT_LEFT, f.x1, true, o.x1, o.x1, o.y1, o.y2, above, n);
+	offer_line(mg, SLOT_RIGHT, f.x2, true, o.x2, o.x2 - 1, o.y1, o.y2, above, n);
+	offer_line(mg, SLOT_TOP, f.y1, false, o.y1, o.y1, o.x1, o.x2, above, n);
+	offer_line(mg, SLOT_BOTTOM, f.y2, false, o.y2, o.y2 - 1, o.x1, o.x2, above, n);
+	offer_line(mg, SLOT_LEFT, f.x1, true, o.x2, o.x2 - 1, o.y1, o.y2, above, n);
+	offer_line(mg, SLOT_RIGHT, f.x2, true, o.x1, o.x1, o.y1, o.y2, above, n);
+	offer_line(mg, SLOT_TOP, f.y1, false, o.y2, o.y2 - 1, o.x1, o.x2, above, n);
+	offer_line(mg, SLOT_BOTTOM, f.y2, false, o.y1, o.y1, o.x1, o.x2, above, n);
+}
+
+void magnet_consider(magnet_t *mg, magnet_box_t o)
+{
+	magnet_consider_visible(mg, o, NULL, 0);
 }
 
 /* For a move, the closer of the two edges of an axis wins; the first one on a
