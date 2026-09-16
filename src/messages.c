@@ -1963,11 +1963,12 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 		edge_snap_threshold = t;
 	} else if (streq("edge_snap_zone_ratio", name)) {
 		double r;
-		if (sscanf(value, "%lf", &r) != 1 || r < 0 || r > 0.5) {
+		if (sscanf(value, "%lf", &r) == 1 && r >= 0 && r <= 0.5) {
+			edge_snap_zone_ratio = r;
+		} else {
 			fail(rsp, "config: %s: Invalid value: '%s' (must be 0-0.5).\n", name, value);
 			return;
 		}
-		edge_snap_zone_ratio = r;
 	} else if (streq("raise_floating_on_click", name)) {
 		bool b;
 		if (!parse_bool(value, &b)) {
