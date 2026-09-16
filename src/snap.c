@@ -76,65 +76,14 @@ void apply_snap_zone(coordinates_t *loc, monitor_t *target_monitor, snap_zone_t 
 	rect.width = (pad_h < rect.width) ? rect.width - pad_h : 1;
 	rect.height = (pad_v < rect.height) ? rect.height - pad_v : 1;
 
-	bspwm_rect_t target = {0, 0, 0, 0};
-
-	switch (zone) {
-		case SNAP_LEFT:
-			target.x = rect.x;
-			target.y = rect.y;
-			target.width = rect.width / 2;
-			target.height = rect.height;
-			break;
-		case SNAP_RIGHT:
-			target.x = rect.x + rect.width / 2;
-			target.y = rect.y;
-			target.width = rect.width / 2;
-			target.height = rect.height;
-			break;
-		case SNAP_TOP:
-			target.x = rect.x;
-			target.y = rect.y;
-			target.width = rect.width;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM:
-			target.x = rect.x;
-			target.y = rect.y + rect.height / 2;
-			target.width = rect.width;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_TOP_LEFT:
-			target.x = rect.x;
-			target.y = rect.y;
-			target.width = rect.width / 2;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_TOP_RIGHT:
-			target.x = rect.x + rect.width / 2;
-			target.y = rect.y;
-			target.width = rect.width / 2;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM_LEFT:
-			target.x = rect.x;
-			target.y = rect.y + rect.height / 2;
-			target.width = rect.width / 2;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_BOTTOM_RIGHT:
-			target.x = rect.x + rect.width / 2;
-			target.y = rect.y + rect.height / 2;
-			target.width = rect.width / 2;
-			target.height = rect.height / 2;
-			break;
-		case SNAP_MAXIMIZE:
-			/* Set to fullscreen state instead of just resizing */
-			set_state(m, d, n, STATE_FULLSCREEN);
-			arrange(m, d);
-			return;
-		default:
-			return;
+	if (zone == SNAP_MAXIMIZE) {
+		/* Set to fullscreen state instead of just resizing */
+		set_state(m, d, n, STATE_FULLSCREEN);
+		arrange(m, d);
+		return;
 	}
+
+	bspwm_rect_t target = edge_zone_rect(rect, zone, n->client->border_width);
 
 	/* Ensure window is floating for snap */
 	if (n->client->state != STATE_FLOATING) {

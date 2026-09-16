@@ -91,3 +91,59 @@ snap_zone_t edge_zone_at(int x, int y, bspwm_rect_t r, int threshold, double rat
 		return SNAP_LEFT;
 	return SNAP_RIGHT;
 }
+
+bspwm_rect_t edge_zone_rect(bspwm_rect_t area, snap_zone_t zone, unsigned int border)
+{
+	int x = area.x, y = area.y;
+	int w = area.width, h = area.height;
+	int first_w = w / 2, first_h = h / 2;
+
+	switch (zone) {
+		case SNAP_LEFT:
+			w = first_w;
+			break;
+		case SNAP_RIGHT:
+			x += first_w;
+			w -= first_w;
+			break;
+		case SNAP_TOP:
+			h = first_h;
+			break;
+		case SNAP_BOTTOM:
+			y += first_h;
+			h -= first_h;
+			break;
+		case SNAP_TOP_LEFT:
+			w = first_w;
+			h = first_h;
+			break;
+		case SNAP_TOP_RIGHT:
+			x += first_w;
+			w -= first_w;
+			h = first_h;
+			break;
+		case SNAP_BOTTOM_LEFT:
+			w = first_w;
+			y += first_h;
+			h -= first_h;
+			break;
+		case SNAP_BOTTOM_RIGHT:
+			x += first_w;
+			w -= first_w;
+			y += first_h;
+			h -= first_h;
+			break;
+		case SNAP_MAXIMIZE:
+			break;
+		case SNAP_NONE:
+			return (bspwm_rect_t) {0, 0, 0, 0};
+	}
+
+	int b = 2 * (int) border;
+	return (bspwm_rect_t) {
+		.x = (int16_t) x,
+		.y = (int16_t) y,
+		.width = (uint16_t) (w > b ? w - b : 1),
+		.height = (uint16_t) (h > b ? h - b : 1),
+	};
+}
