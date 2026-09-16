@@ -1969,6 +1969,13 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 			return;
 		}
 		edge_snap_preview_opacity = o;
+	} else if (streq("magnet_threshold", name)) {
+		int t;
+		if (sscanf(value, "%i", &t) != 1 || t < 0 || t > 100) {
+			fail(rsp, "config: %s: Invalid value: '%s' (must be 0-100).\n", name, value);
+			return;
+		}
+		magnet_threshold = t;
 	} else if (streq("raise_floating_on_click", name)) {
 		bool b;
 		if (!parse_bool(value, &b)) {
@@ -2145,6 +2152,8 @@ void get_setting(coordinates_t loc, char *name, FILE* rsp)
 		fprintf(rsp, "%i", edge_snap_threshold);
 	} else if (streq("edge_snap_preview_opacity", name)) {
 		fprintf(rsp, "%i", edge_snap_preview_opacity);
+	} else if (streq("magnet_threshold", name)) {
+		fprintf(rsp, "%i", magnet_threshold);
 	} else if (streq("raise_floating_on_click", name)) {
 		fprintf(rsp, "%s", BOOL_STR(raise_floating_on_click));
 	} else if (streq("cascade_offset", name)) {

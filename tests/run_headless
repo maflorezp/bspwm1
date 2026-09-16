@@ -412,6 +412,8 @@ done
 
 . ./headless/edge_snap_preview.sh
 
+. ./headless/magnet.sh
+
 # ---- Quit ----
 
 echo ""

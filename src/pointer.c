@@ -37,6 +37,7 @@
 #include "snap.h"
 #include "pointer.h"
 #include "color.h"
+#include "magnet.h"
 
 uint16_t num_lock;
 uint16_t caps_lock;
@@ -306,6 +307,117 @@ bool grab_pointer(pointer_action_t pac)
 	return true;
 }
 
+/* Cast to int on both sides: GCC's -Wenum-compare flags a bare comparison
+ * between magnet.h's anonymous enum and resize_handle_t as mismatched enum
+ * types, even though this check is exactly about their values lining up. */
+static_assert((int) MAGNET_LEFT == (int) HANDLE_LEFT && (int) MAGNET_TOP == (int) HANDLE_TOP &&
+              (int) MAGNET_RIGHT == (int) HANDLE_RIGHT && (int) MAGNET_BOTTOM == (int) HANDLE_BOTTOM,
+              "magnet edges must match resize handles");
+
+/* Outer box of a node's window: its rectangle plus the border on both sides. */
+static magnet_box_t magnet_box_of(node_t *n)
+{
+	bspwm_rect_t r = get_rectangle(NULL, NULL, n);
+	int b = 2 * (int) n->client->border_width;
+	return (magnet_box_t) {r.x, r.y, r.x + r.width + b, r.y + r.height + b};
+}
+
+/* Work area of a desktop, computed the way arrange() does. */
+static magnet_box_t magnet_area_of(monitor_t *m, desktop_t *d)
+{
+	bspwm_rect_t r = m->rectangle;
+	padding_t p = m->padding;
+	if (d != NULL) {
+		p.top += d->padding.top;
+		p.right += d->padding.right;
+		p.bottom += d->padding.bottom;
+		p.left += d->padding.left;
+	}
+	return (magnet_box_t) {r.x + p.left, r.y + p.top,
+	                       r.x + r.width - p.right, r.y + r.height - p.bottom};
+}
+
+/* Where the dragged window goes when the pointer alone would put it at `free`:
+ * a magnet pass against the work area and the other visible windows. A move
+ * is checked against the monitor the window is about to land on, so it
+ * sticks to the new monitor in the same step. */
+static magnet_box_t magnet_snap_node(coordinates_t *loc, magnet_box_t free, unsigned int edges)
+{
+	monitor_t *m = loc->monitor;
+	desktop_t *d = loc->desktop;
+	if (edges == MAGNET_ALL) {
+		bspwm_point_t center = {(int16_t) ((free.x1 + free.x2) / 2),
+		                        (int16_t) ((free.y1 + free.y2) / 2)};
+		monitor_t *target = monitor_from_point(center);
+		if (target != NULL && target != m) {
+			m = target;
+			d = target->desk;
+		}
+	}
+
+	magnet_t mg;
+	magnet_begin(&mg, free, edges, magnet_area_of(m, d), magnet_threshold);
+	if (d != NULL) {
+		for (node_t *f = first_extrema(d->root); f != NULL; f = next_leaf(f, d->root)) {
+			if (f == loc->node || f->client == NULL || f->hidden)
+				continue;
+			magnet_consider(&mg, magnet_box_of(f));
+		}
+	}
+	return magnet_result(&mg);
+}
+
+/* One resize step with magnetic edges. `free` holds where the dragged edges
+ * would be without the magnet and is advanced by this motion first. */
+static void magnet_resize(coordinates_t *loc, resize_handle_t rh, magnet_box_t *free,
+                          int root_x, int root_y, int dx, int dy, bool absolute)
+{
+	int b = 2 * (int) loc->node->client->border_width;
+	if (absolute) {
+		/* resize_client puts the outer left/top edge at the pointer, and
+		 * x + width (y + height) for the right (bottom) edge, which is the
+		 * outer edge minus both borders. */
+		if (rh & HANDLE_LEFT)
+			free->x1 = root_x;
+		if (rh & HANDLE_RIGHT)
+			free->x2 = root_x + b;
+		if (rh & HANDLE_TOP)
+			free->y1 = root_y;
+		if (rh & HANDLE_BOTTOM)
+			free->y2 = root_y + b;
+	} else {
+		if (rh & HANDLE_LEFT)
+			free->x1 += dx;
+		if (rh & HANDLE_RIGHT)
+			free->x2 += dx;
+		if (rh & HANDLE_TOP)
+			free->y1 += dy;
+		if (rh & HANDLE_BOTTOM)
+			free->y2 += dy;
+	}
+
+	magnet_box_t want = magnet_snap_node(loc, *free, (unsigned int) rh);
+
+	if (absolute) {
+		int ax = (rh & HANDLE_LEFT) ? want.x1 : want.x2 - b;
+		int ay = (rh & HANDLE_TOP) ? want.y1 : want.y2 - b;
+		resize_client(loc, rh, ax, ay, false);
+		return;
+	}
+
+	magnet_box_t cur = magnet_box_of(loc->node);
+	int ddx = 0, ddy = 0;
+	if (rh & HANDLE_LEFT)
+		ddx = want.x1 - cur.x1;
+	else if (rh & HANDLE_RIGHT)
+		ddx = want.x2 - cur.x2;
+	if (rh & HANDLE_TOP)
+		ddy = want.y1 - cur.y1;
+	else if (rh & HANDLE_BOTTOM)
+		ddy = want.y2 - cur.y2;
+	resize_client(loc, rh, ddx, ddy, true);
+}
+
 void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 {
 	node_t *n = loc.node;
@@ -323,6 +435,11 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 	grabbing = true;
 	grabbed_node = n;
 	snap_target_monitor = NULL;
+
+	/* Magnetic edges: the box the pointer alone would give the window, which
+	 * the magnet then adjusts on every motion. */
+	bool magnet_on = magnet_threshold > 0 && IS_FLOATING(n->client);
+	magnet_box_t magnet_free = magnet_on ? magnet_box_of(n) : (magnet_box_t) {0};
 
 	do {
 		free(evt);
@@ -344,7 +461,17 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 			int16_t dy = e->root_y - last_motion_y;
 
 			if (pac == ACTION_MOVE) {
-				move_client(&loc, dx, dy);
+				if (magnet_on) {
+					magnet_free.x1 += dx;
+					magnet_free.x2 += dx;
+					magnet_free.y1 += dy;
+					magnet_free.y2 += dy;
+					magnet_box_t want = magnet_snap_node(&loc, magnet_free, MAGNET_ALL);
+					magnet_box_t cur = magnet_box_of(n);
+					move_client(&loc, want.x1 - cur.x1, want.y1 - cur.y1);
+				} else {
+					move_client(&loc, dx, dy);
+				}
 
 				/* Check for edge snap zones while dragging */
 				if (edge_snap_enabled) {
@@ -362,7 +489,11 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
 				}
 			} else if (n && n->client) {
 				client_t *c = n->client;
-				if (SHOULD_HONOR_SIZE_HINTS(c->honor_size_hints, c->state)) {
+				bool absolute = SHOULD_HONOR_SIZE_HINTS(c->honor_size_hints, c->state);
+				if (magnet_on) {
+					magnet_resize(&loc, rh, &magnet_free, e->root_x, e->root_y,
+					              dx, dy, absolute);
+				} else if (absolute) {
 					resize_client(&loc, rh, e->root_x, e->root_y, false);
 				} else {
 					resize_client(&loc, rh, dx, dy, true);

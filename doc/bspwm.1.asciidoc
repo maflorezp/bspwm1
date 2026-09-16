@@ -827,6 +827,9 @@ Global Settings
 'edge_snap_preview_opacity'::
 	Opacity of that region, from *0* to *100*. It only shows through with a compositor running; without one the region is drawn opaque. X11 only. Defaults to *25*.
 
+'magnet_threshold'::
+	While a floating window is moved or resized with the pointer, its edges stick to the edges of the work area and of the other windows on the desktop that come within this many pixels: edge against edge, or in line with the same edge of a neighbour. A window only attracts along one axis when it is next to the dragged one on the other axis. Keep dragging to pull free. *0* disables it. X11 only. Defaults to *0*.
+
 'cascade_offset'::
 	When bspwm centres a new floating window on its own initiative (because the window supplied no position), offset each successive one by this many pixels so they don't stack exactly on top of each other. Set to *0* to disable. Windows centred because a rule said *center=on* are never cascaded. Defaults to *20*.
 
