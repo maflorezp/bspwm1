@@ -1,6 +1,8 @@
 CFLAGS  += -std=c99 -D_POSIX_C_SOURCE=200809L -pedantic -Wall -Wextra
 
-all: test_window test_window_wl test_magnet
+all: test_window test_window_wl
+
+all: test_magnet
 
 test_window: test_window.c
 	$(CC) $(CFLAGS) -o $@ $< -lxcb -lxcb-icccm
