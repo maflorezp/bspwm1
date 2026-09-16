@@ -102,6 +102,54 @@ if drag_tools_available; then
 	$BSPC monitor magnet-right -r
 	$BSPC monitor "$MON" -g 1920x1080+0+0
 
+	# Resizing a side: only that edge sticks, and pulls free again.
+	$BSPC config magnet_threshold 20
+	B=$(spawn_floating resize-neighbour 400x300+1000+300)
+	A=$(spawn_floating resize-side 400x300+300+300)
+	drag_begin 2 690 450
+	drag_to 979 450
+	assert_eq "a resized side touches the window next to it" "300 300 696 300" "$(win_geom "$A")"
+	drag_to 1029 450
+	assert_eq "stretching on pulls the side free" "300 300 739 300" "$(win_geom "$A")"
+	drag_end 2
+	$BSPC node "$A" -c
+	sleep 0.3
+
+	# Resizing a corner: both edges stick, each to its own target.
+	A=$(spawn_floating resize-corner 400x300+300+300)
+	drag_begin 3 680 580
+	drag_to 971 1048
+	assert_eq "a resized corner sticks to a window and to the work area" "300 300 696 776" "$(win_geom "$A")"
+	drag_end 3
+	$BSPC node "$A" -c
+	$BSPC node "$B" -c
+	sleep 0.3
+
+	# Tiled windows resize exactly as without the magnet.
+	./test_window resize-tiled-1 Drag >/dev/null 2>&1 &
+	sleep 0.5
+	T1=$($BSPC query -N -n focused)
+	./test_window resize-tiled-2 Drag >/dev/null 2>&1 &
+	sleep 0.5
+	BEFORE=$(win_geom "$T1")
+	drag_begin 2 900 540
+	drag_to 950 540
+	drag_end 2
+	WITH_MAGNET=$(win_geom "$T1")
+	$BSPC node @/ -r 0.5
+	sleep 0.3
+	$BSPC config magnet_threshold 0
+	drag_begin 2 900 540
+	drag_to 950 540
+	drag_end 2
+	WITHOUT_MAGNET=$(win_geom "$T1")
+	assert_fail "the tiled resize actually changed the window" [ "$BEFORE" = "$WITH_MAGNET" ]
+	assert_eq "a tiled resize is the same with and without the magnet" "$WITHOUT_MAGNET" "$WITH_MAGNET"
+	$BSPC node "$T1" -c
+	sleep 0.3
+	$BSPC node -c
+	sleep 0.3
+
 	$BSPC config magnet_threshold 0
 	$BSPC config edge_snap_enabled true
 else
