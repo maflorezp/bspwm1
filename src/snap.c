@@ -23,6 +23,7 @@
  */
 
 #include "bspwm.h"
+#include "edge_zone.h"
 #include "settings.h"
 #include "tree.h"
 #include "snap.h"
@@ -35,36 +36,7 @@ snap_zone_t get_snap_zone(bspwm_point_t pos, monitor_t *m)
 {
 	if (!edge_snap_enabled || !m)
 		return SNAP_NONE;
-
-	bspwm_rect_t rect = m->rectangle;
-	int threshold = edge_snap_threshold;
-
-	bool at_left = pos.x <= rect.x + threshold;
-	bool at_right = pos.x >= rect.x + rect.width - threshold;
-	bool at_top = pos.y <= rect.y + threshold;
-	bool at_bottom = pos.y >= rect.y + rect.height - threshold;
-
-	/* Corners first (higher priority) */
-	if (at_left && at_top)
-		return SNAP_TOP_LEFT;
-	if (at_right && at_top)
-		return SNAP_TOP_RIGHT;
-	if (at_left && at_bottom)
-		return SNAP_BOTTOM_LEFT;
-	if (at_right && at_bottom)
-		return SNAP_BOTTOM_RIGHT;
-
-	/* Top edge = maximize */
-	if (at_top)
-		return SNAP_MAXIMIZE;
-
-	/* Side edges = half screen */
-	if (at_left)
-		return SNAP_LEFT;
-	if (at_right)
-		return SNAP_RIGHT;
-
-	return SNAP_NONE;
+	return edge_zone_at(pos.x, pos.y, m->rectangle, edge_snap_threshold, edge_snap_zone_ratio);
 }
 
 /*

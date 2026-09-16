@@ -78,6 +78,7 @@
 /* Windows-like snap behavior */
 #define EDGE_SNAP_ENABLED           true
 #define EDGE_SNAP_THRESHOLD         20
+#define EDGE_SNAP_ZONE_RATIO        0.0
 #define RAISE_FLOATING_ON_CLICK     true
 #define CASCADE_OFFSET              20
 
@@ -133,6 +134,7 @@ extern int max_tiles_per_desktop;
 /* Windows-like snap behavior */
 extern bool edge_snap_enabled;
 extern int edge_snap_threshold;
+extern double edge_snap_zone_ratio;
 extern bool raise_floating_on_click;
 extern int cascade_offset;
 
