@@ -1258,9 +1258,9 @@ bool node_matches(coordinates_t *loc, coordinates_t *ref, node_select_t *sel)
 	}
 
 	if (sel->automatic != OPTION_NONE &&
-	    loc->node->presel
-	    ? sel->automatic == OPTION_FALSE
-	    : sel->automatic == OPTION_TRUE) {
+	    loc->node->presel != NULL
+	    ? sel->automatic == OPTION_TRUE
+	    : sel->automatic == OPTION_FALSE) {
 		return false;
 	}
 
