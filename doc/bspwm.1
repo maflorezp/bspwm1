@@ -2,12 +2,12 @@
 .\"     Title: bspwm
 .\"    Author: [see the "Author" section]
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: 08/24/2026
+.\"      Date: 09/17/2026
 .\"    Manual: Bspwm Manual
-.\"    Source: Bspwm v1.4.0-9-gb25f2ac
+.\"    Source: Bspwm v1.6.2
 .\"  Language: English
 .\"
-.TH "BSPWM" "1" "08/24/2026" "Bspwm v1\&.4\&.0\-9\-gb25f2ac" "Bspwm Manual"
+.TH "BSPWM" "1" "09/17/2026" "Bspwm v1\&.6\&.2" "Bspwm Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -1095,103 +1095,26 @@ Create a new rule\&. Colons in the
 fields can be escaped with a backslash\&.
 .RE
 .sp
-A rule is given either as the pattern above or as a list of conditions, each one
-\fI<property>=<pattern>\fR
-or
-\fI<property>~=<pattern>\fR\&. The properties are
-\fIclass\fR,
-\fIinstance\fR,
-\fIname\fR
-(the title),
-\fItype\fR,
-\fIrole\fR
-(\fBWM_WINDOW_ROLE\fR, always empty under the wlroots backend) and
-\fItransient\fR
-(\fBon\fR
-when the window is a child of another one)\&. A window matches the rule when every condition holds, and a rule with no condition at all, only effects, matches every window, the same as
-\fI*:*:*\fR\&.
+A rule is given either as the pattern above or as a list of conditions, each one \fI<property>=<pattern>\fR or \fI<property>~=<pattern>\fR\&. The properties are \fIclass\fR, \fIinstance\fR, \fIname\fR (the title), \fItype\fR, \fIrole\fR (\fBWM_WINDOW_ROLE\fR, always empty under the wlroots backend) and \fItransient\fR (\fBon\fR when the window is a child of another one)\&. A window matches the rule when every condition holds, and a rule with no condition at all, only effects, matches every window, the same as \fI*:*:*\fR\&.
 .sp
-The first argument after the options decides the form\&. When it starts with a key (lowercase letters and underscores) followed by
-\fI=\fR
-or
-\fI~=\fR, the rule is a list of conditions and effects, and a key that is neither a property nor an effect is an error\&. Anything else is the pattern above, so a pattern whose title contains an
-\fI=\fR, such as
-\fIst:*:vim = notes\fR, is still a pattern\&. Only the first
-\fI=\fR
-of a condition ends the property, which lets the same title be written as a condition too:
-\fIname=vim = notes\fR\&. The one pattern that cannot be given as such is a lone lowercase class containing an
-\fI=\fR, such as
-\fIfoo=bar\fR, which reads as the unknown key
-\fIfoo\fR: write it as
-\fIclass=foo=bar\fR\&.
+The first argument after the options decides the form\&. When it starts with a key (lowercase letters and underscores) followed by \fI=\fR or \fI~=\fR, the rule is a list of conditions and effects, and a key that is neither a property nor an effect is an error\&. Anything else is the pattern above, so a pattern whose title contains an \fI=\fR, such as \fIst:*:vim = notes\fR, is still a pattern\&. Only the first \fI=\fR of a condition ends the property, which lets the same title be written as a condition too: \fIname=vim = notes\fR\&. The one pattern that cannot be given as such is a lone lowercase class containing an \fI=\fR, such as \fIfoo=bar\fR, which reads as the unknown key \fIfoo\fR: write it as \fIclass=foo=bar\fR\&.
 .sp
-With
-\fI=\fR
-the pattern is compared as written, and
-\fI*\fR
-alone matches anything, as it does in the pattern above\&. With
-\fI~=\fR
-the pattern is a POSIX extended regular expression, where
-\fI*\fR
-alone is not valid: use
-\fI\&.*\fR, or leave the condition out\&.
+With \fI=\fR the pattern is compared as written, and \fI*\fR alone matches anything, as it does in the pattern above\&. With \fI~=\fR the pattern is a POSIX extended regular expression, where \fI*\fR alone is not valid: use \fI\&.*\fR, or leave the condition out\&.
 .sp
-A pattern ending in
-\fI/i\fR
-is compared ignoring case, so
-\fIclass~=^crx_/i\fR
-is both\&. The properties
-\fItype\fR
-and
-\fItransient\fR
-take neither a regular expression nor the
-\fI/i\fR
-suffix: they are always compared as written\&.
-\fItype\fR
-is one of
-\fBnormal\fR,
-\fBdock\fR,
-\fBdesktop\fR,
-\fBnotification\fR,
-\fBdialog\fR,
-\fButility\fR
-or
-\fBtoolbar\fR,
-and
-\fItransient\fR
-is a boolean\&.
+A pattern ending in \fI/i\fR is compared ignoring case, so \fIclass~=^crx_/i\fR is both\&. The properties \fItype\fR and \fItransient\fR take neither a regular expression nor the \fI/i\fR suffix: they are always compared as written\&. \fItype\fR is one of \fBnormal\fR, \fBdock\fR, \fBdesktop\fR, \fBnotification\fR, \fBdialog\fR, \fButility\fR or \fBtoolbar\fR, and \fItransient\fR is a boolean\&.
 .sp
-A pattern holds at most 255 characters, not counting the
-\fI/i\fR
-suffix, and the effects of a rule, together and separated by spaces, at most 255 as well\&.
+A pattern holds at most 255 characters, not counting the \fI/i\fR suffix, and the effects of a rule, together and separated by spaces, at most 255 as well\&.
 .sp
-A rule is refused when a pattern is not a valid regular expression, a condition is
-repeated, a
-\fItype\fR
-or
-\fItransient\fR
-value is not in its list,
-\fItype\fR
-or
-\fItransient\fR
-is given with
-\fI~=\fR
-or
-\fI/i\fR, a key is neither a property nor an effect, a pattern or the effects are too long, or the conditions are too long to be listed\&.
+A rule is refused when a pattern is not a valid regular expression, a condition is repeated, a \fItype\fR or \fItransient\fR value is not in its list, \fItype\fR or \fItransient\fR is given with \fI~=\fR or \fI/i\fR, a key is neither a property nor an effect, a pattern or the effects are too long, or the conditions are too long to be listed\&.
 .sp
-Only rules that look at
-\fIclass\fR
-and
-\fIinstance\fR
-carry
-\fIignore_tile_limits\fR: the other properties are not known yet when a window is inserted\&.
+Only rules that look at \fIclass\fR and \fIinstance\fR carry \fIignore_tile_limits\fR: the other properties are not known yet when a window is inserted\&.
 .sp
 .if n \{\
 .RS 4
 .\}
 .nf
 bspc rule \-a class=Pavucontrol/i state=floating
-bspc rule \-a 'class~=^(eog|feh|ristretto)$' state=floating focus=on
+bspc rule \-a \*(Aqclass~=^(eog|feh|ristretto)$\*(Aq state=floating focus=on
 bspc rule \-a class=Google\-chrome instance~=^crx_ state=floating center=on
 bspc rule \-a type=dialog state=floating center=on
 bspc rule \-a class=Google\-chrome role=pop\-up state=floating
@@ -1208,19 +1131,13 @@ bspc rule \-a Google\-chrome:crx_abcdef desktop=work follow=on
 Remove the given rules\&.
 .RE
 .sp
-A pattern removes the rules, in either form, whose class, instance and name patterns are the ones it gives, field by field, a
-\fI*\fR
-in it standing for any of them:
-\fI*:*:*\fR
-removes every rule\&. A rule written as conditions can also be removed by its conditions exactly as
-\fBrule \-l\fR
-lists them, given as a single argument; compared that way, a rule with one more condition, or a different operator, is a different rule and stays\&.
+A pattern removes the rules, in either form, whose class, instance and name patterns are the ones it gives, field by field, a \fI*\fR in it standing for any of them: \fI*:*:*\fR removes every rule\&. A rule written as conditions can also be removed by its conditions exactly as \fBrule \-l\fR lists them, given as a single argument; compared that way, a rule with one more condition, or a different operator, is a different rule and stays\&.
 .sp
 .if n \{\
 .RS 4
 .\}
 .nf
-bspc rule \-r 'class=Google\-chrome instance~=^crx_'
+bspc rule \-r \*(Aqclass=Google\-chrome instance~=^crx_\*(Aq
 .fi
 .if n \{\
 .RE
