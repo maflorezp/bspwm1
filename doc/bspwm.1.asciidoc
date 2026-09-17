@@ -654,11 +654,13 @@ every condition holds.
 With '=' the pattern is compared as written; with '~=' it is a POSIX extended
 regular expression. A pattern ending in '/i' is compared ignoring case, so
 'class~=^crx_/i' is both. The properties 'type' and 'transient' take no regular
-expression: 'type' is one of *normal*, *dock*, *desktop*, *notification*, *dialog*,
-*utility* or *toolbar*, and 'transient' is a boolean.
+expression, and the '/i' suffix on them is accepted but has no effect: they are
+always compared as written. 'type' is one of *normal*, *dock*, *desktop*,
+*notification*, *dialog*, *utility* or *toolbar*, and 'transient' is a boolean.
 
 A rule is refused when a pattern is not a valid regular expression, a condition is
-repeated, or a key is neither a property nor an effect.
+repeated, a 'type' or 'transient' value is not in its list, 'type' or 'transient' is
+given with '~=', or a key is neither a property nor an effect.
 
 Only rules that look at 'class' and 'instance' carry 'ignore_tile_limits': the other
 properties are not known yet when a window is inserted.

@@ -1122,7 +1122,10 @@ is both\&. The properties
 \fItype\fR
 and
 \fItransient\fR
-take no regular expression:
+take no regular expression, and the
+\fI/i\fR
+suffix on them is accepted but has no effect: they are always compared as
+written\&.
 \fItype\fR
 is one of
 \fBnormal\fR,
@@ -1137,7 +1140,18 @@ and
 \fItransient\fR
 is a boolean\&.
 .sp
-A rule is refused when a pattern is not a valid regular expression, a condition is repeated, or a key is neither a property nor an effect\&.
+A rule is refused when a pattern is not a valid regular expression, a condition is
+repeated, a
+\fItype\fR
+or
+\fItransient\fR
+value is not in its list,
+\fItype\fR
+or
+\fItransient\fR
+is given with
+\fI~=\fR,
+or a key is neither a property nor an effect\&.
 .sp
 Only rules that look at
 \fIclass\fR
