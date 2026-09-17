@@ -30,6 +30,9 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include "bspwm.h"
+#ifdef BACKEND_X11
+#include "backend_x11.h"
+#endif
 #include "desktop.h"
 #include "monitor.h"
 #include "pointer.h"
@@ -1904,8 +1907,16 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 		SET_BOOL(ignore_ewmh_struts)
 		SET_BOOL(center_pseudo_tiled)
 		SET_BOOL(removal_adjustment)
-		SET_BOOL(allow_net_wm_moveresize)
 #undef SET_BOOL
+	} else if (streq("allow_net_wm_moveresize", name)) {
+		if (!parse_bool(value, &allow_net_wm_moveresize)) {
+			fail(rsp, "config: %s: Invalid value: '%s'.\n", name, value);
+			return;
+		}
+#ifdef BACKEND_X11
+		/* Clients only ask for a drag while the atom is advertised. */
+		x11_setup_ewmh_supported();
+#endif
 	} else if (streq("tile_limit_enabled", name)) {
 		bool b;
 		if (!parse_bool(value, &b)) {
