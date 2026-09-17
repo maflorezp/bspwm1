@@ -1149,6 +1149,9 @@ llamarlo que usan las demás pruebas (`./test_window nombre Clase`).
 
 - [ ] **Step 2: Escribir las pruebas (rojo)**
 
+`bspc rule -r` solo entiende la forma antigua, así que una condición como argumento **no borra
+nada**: cada regla se retira con `$BSPC rule -r tail || true`, que quita la última añadida.
+
 Añade al final de `tests/headless/rule_match.sh`, dentro de un bloque nuevo:
 
 ```sh
@@ -1162,7 +1165,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	assert_eq "a rule with /i matches whatever the case" "floating" "$(rule_state "$W")"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r class=Pavucontrol/i || true
+	$BSPC rule -r tail || true
 
 	# A regular expression on the instance: the web app, not the browser.
 	assert_ok "add the web app rule" \
@@ -1179,7 +1182,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	assert_eq "the plain browser window does not" "tiled" "$(rule_state "$W")"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r 'instance~=^crx_' || true
+	$BSPC rule -r tail || true
 
 	# The role.
 	assert_ok "add the role rule" $BSPC rule -a role=pop-up sticky=on
@@ -1189,7 +1192,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	assert_eq "a window with that role is sticky" "true" "$(rule_flag "$W" sticky)"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r role=pop-up || true
+	$BSPC rule -r tail || true
 
 	# A child window.
 	assert_ok "add the child window rule" $BSPC rule -a transient=on sticky=on
@@ -1205,7 +1208,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	assert_eq "a window with no parent is not" "false" "$(rule_flag "$W" sticky)"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r transient=on || true
+	$BSPC rule -r tail || true
 else
 	printf "%b\n" "  ${YELLOW}SKIP${NC}: rule conditions against real windows (needs X11 and test_window)"
 fi
@@ -1240,7 +1243,7 @@ dé por su cuenta:
 	assert_eq "a dialog is sticky" "true" "$(rule_flag "$W" sticky)"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r type=dialog || true
+	$BSPC rule -r tail || true
 ```
 
 Ejecuta `flock /tmp/bspwm1-make-test.lock make test > /tmp/bspwm1-rulematch-t5-red.log 2>&1` con
@@ -1284,22 +1287,23 @@ En `doc/bspwm.1.asciidoc`, en la sección `rule`, sustituye la línea de la sint
 las dos formas y añade la tabla de propiedades y la de patrones. Texto exacto:
 
 ```asciidoc
-*rule* -a (<class_name>|*)[:(<instance_name>|*)[:(<name>|*)]]|<condition>... [-o|--one-shot] <effect>...
+*rule* -a (<class_name>|*)[:(<instance_name>|*)[:(<name>|*)]]|(<property>[~]=<pattern>)... [-o|--one-shot] <effect>...
 ```
 
 y, debajo de la descripción actual de la orden:
 
 ```asciidoc
 A rule is given either as the pattern above or as a list of conditions, each one
-'<property>=<pattern>'. The properties are 'class', 'instance', 'name' (the title),
-'type', 'role' (*WM_WINDOW_ROLE*) and 'transient' (*on* when the window is a child
-of another one). A window matches the rule when every condition holds.
+'<property>=<pattern>' or '<property>~=<pattern>'. The properties are 'class',
+'instance', 'name' (the title), 'type', 'role' (*WM_WINDOW_ROLE*) and 'transient'
+(*on* when the window is a child of another one). A window matches the rule when
+every condition holds.
 
-A pattern is compared as written, ignoring case when it ends in '/i', or as a POSIX
-extended regular expression when it starts with '~' ('~^crx_/i' is both). The
-properties 'type' and 'transient' take no regular expression: 'type' is one of
-*normal*, *dock*, *desktop*, *notification*, *dialog*, *utility* or *toolbar*, and
-'transient' is a boolean.
+With '=' the pattern is compared as written; with '~=' it is a POSIX extended
+regular expression. A pattern ending in '/i' is compared ignoring case, so
+'class~=^crx_/i' is both. The properties 'type' and 'transient' take no regular
+expression: 'type' is one of *normal*, *dock*, *desktop*, *notification*, *dialog*,
+*utility* or *toolbar*, and 'transient' is a boolean.
 
 A rule is refused when a pattern is not a valid regular expression, a condition is
 repeated, or a key is neither a property nor an effect.
