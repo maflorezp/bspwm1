@@ -206,11 +206,19 @@ assert_eq "nor one with a different case marker" "$RM_BEFORE" \
 drop_cause "the rule with two conditions is removed by its own cause" \
 	'class=kitty instance=term'
 
+# The old field-by-field removal reaches rules written as conditions too,
+# as the manual says: a pattern compares the class, instance and name
+# patterns, whatever operator they were written with.
+assert_ok "add a rule with conditions to remove by pattern" \
+	$BSPC rule -a class=kitty state=floating
+drop_cause "an old-form pattern removes a rule written as conditions" 'kitty:*:*'
+
 # Everything that must be refused, with the rule never added. Chromium is
 # still the only rule on the list, so a real BEFORE also proves a refusal
 # does not disturb what was already there.
 BEFORE=$($BSPC rule -l | wc -l)
 assert_fail "reject a broken regular expression" $BSPC rule -a 'class~=^(eog' state=floating
+assert_fail "a lone * is not a regular expression" $BSPC rule -a 'class~=*' state=floating
 assert_fail "reject an unknown window type" $BSPC rule -a type=popup state=floating
 assert_fail "reject an unknown key" $BSPC rule -a clas=kitty state=floating
 assert_fail "reject a repeated condition" $BSPC rule -a class=a class=b state=floating
