@@ -526,65 +526,152 @@ void parse_rule_consequence(int fd, rule_consequence_t *csq)
     }
 }
 
+/* One setter per consequence key. They are what `parse_key_value()` below
+ * dispatches to, and they are named once, in `consequence_keys`. */
+static void csq_set_monitor(char *value, rule_consequence_t *csq)
+{
+	snprintf(csq->monitor_desc, sizeof(csq->monitor_desc), "%s", value);
+}
+
+static void csq_set_desktop(char *value, rule_consequence_t *csq)
+{
+	snprintf(csq->desktop_desc, sizeof(csq->desktop_desc), "%s", value);
+}
+
+static void csq_set_node(char *value, rule_consequence_t *csq)
+{
+	snprintf(csq->node_desc, sizeof(csq->node_desc), "%s", value);
+}
+
+static void csq_set_split_dir(char *value, rule_consequence_t *csq)
+{
+	direction_t dir;
+	if (parse_direction(value, &dir)) {
+		SET_CSQ_SPLIT_DIR(dir);
+	}
+}
+
+static void csq_set_state(char *value, rule_consequence_t *csq)
+{
+	client_state_t cst;
+	if (parse_client_state(value, &cst)) {
+		SET_CSQ_STATE(cst);
+	}
+}
+
+static void csq_set_layer(char *value, rule_consequence_t *csq)
+{
+	stack_layer_t lyr;
+	if (parse_stack_layer(value, &lyr)) {
+		SET_CSQ_LAYER(lyr);
+	}
+}
+
+static void csq_set_split_ratio(char *value, rule_consequence_t *csq)
+{
+	double rat;
+	if (sscanf(value, "%lf", &rat) == 1 && rat > 0 && rat < 1) {
+		csq->split_ratio = rat;
+	}
+}
+
+static void csq_set_rectangle(char *value, rule_consequence_t *csq)
+{
+	if (csq->rect == NULL) {
+		csq->rect = calloc(1, sizeof(bspwm_rect_t));
+	}
+	if (!parse_rectangle(value, csq->rect)) {
+		free(csq->rect);
+		csq->rect = NULL;
+	}
+}
+
+static void csq_set_honor_size_hints(char *value, rule_consequence_t *csq)
+{
+	if (!parse_honor_size_hints_mode(value, &csq->honor_size_hints)) {
+		csq->honor_size_hints = HONOR_SIZE_HINTS_DEFAULT;
+	}
+}
+
+/* The boolean consequences all read the same way: a value that is not a
+ * boolean leaves the flag alone. */
+#define CSQ_SET_BOOL(name) \
+	static void csq_set_##name(char *value, rule_consequence_t *csq) \
+	{ \
+		bool v; \
+		if (parse_bool(value, &v)) { \
+			csq->name = v; \
+		} \
+	}
+CSQ_SET_BOOL(hidden)
+CSQ_SET_BOOL(sticky)
+CSQ_SET_BOOL(private)
+CSQ_SET_BOOL(locked)
+CSQ_SET_BOOL(marked)
+CSQ_SET_BOOL(center)
+CSQ_SET_BOOL(follow)
+CSQ_SET_BOOL(manage)
+CSQ_SET_BOOL(focus)
+CSQ_SET_BOOL(border)
+#undef CSQ_SET_BOOL
+
+/* Every key a rule consequence takes, and nothing else. This is the only
+ * place they are enumerated: `parse_key_value()` dispatches through it, and
+ * `cmd_rule()` (src/messages.c) asks rule_is_consequence_key() whether an
+ * argument is one before accepting the rule. A key cmd_rule() does not know
+ * is an error, so a second list kept by hand beside this one would start
+ * refusing legitimate rules the moment the two drifted apart.
+ * `ignore_tile_limits` has no setter on purpose: nothing reads it off the
+ * consequence — `effect_has()` (src/tree.c) reads it straight out of the
+ * rule's effect text — but it is still a key a rule may carry. */
+static const struct {
+	const char *key;
+	void (*set)(char *value, rule_consequence_t *csq);
+} consequence_keys[] = {
+	{"monitor", csq_set_monitor},
+	{"desktop", csq_set_desktop},
+	{"node", csq_set_node},
+	{"split_dir", csq_set_split_dir},
+	{"split_ratio", csq_set_split_ratio},
+	{"state", csq_set_state},
+	{"layer", csq_set_layer},
+	{"honor_size_hints", csq_set_honor_size_hints},
+	{"rectangle", csq_set_rectangle},
+	{"hidden", csq_set_hidden},
+	{"sticky", csq_set_sticky},
+	{"private", csq_set_private},
+	{"locked", csq_set_locked},
+	{"marked", csq_set_marked},
+	{"center", csq_set_center},
+	{"follow", csq_set_follow},
+	{"manage", csq_set_manage},
+	{"focus", csq_set_focus},
+	{"border", csq_set_border},
+	{"ignore_tile_limits", NULL},
+};
+
+bool rule_is_consequence_key(const char *key)
+{
+	if (key == NULL) {
+		return false;
+	}
+	for (size_t i = 0; i < LENGTH(consequence_keys); i++) {
+		if (streq(consequence_keys[i].key, key)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void parse_key_value(char *key, char *value, rule_consequence_t *csq)
 {
-	bool v;
-	if (streq("monitor", key)) {
-		snprintf(csq->monitor_desc, sizeof(csq->monitor_desc), "%s", value);
-	} else if (streq("desktop", key)) {
-		snprintf(csq->desktop_desc, sizeof(csq->desktop_desc), "%s", value);
-	} else if (streq("node", key)) {
-		snprintf(csq->node_desc, sizeof(csq->node_desc), "%s", value);
-	} else if (streq("split_dir", key)) {
-		direction_t dir;
-		if (parse_direction(value, &dir)) {
-			SET_CSQ_SPLIT_DIR(dir);
+	for (size_t i = 0; i < LENGTH(consequence_keys); i++) {
+		if (streq(consequence_keys[i].key, key)) {
+			if (consequence_keys[i].set != NULL) {
+				consequence_keys[i].set(value, csq);
+			}
+			return;
 		}
-	} else if (streq("state", key)) {
-		client_state_t cst;
-		if (parse_client_state(value, &cst)) {
-			SET_CSQ_STATE(cst);
-		}
-	} else if (streq("layer", key)) {
-		stack_layer_t lyr;
-		if (parse_stack_layer(value, &lyr)) {
-			SET_CSQ_LAYER(lyr);
-		}
-	} else if (streq("split_ratio", key)) {
-		double rat;
-		if (sscanf(value, "%lf", &rat) == 1 && rat > 0 && rat < 1) {
-			csq->split_ratio = rat;
-		}
-	} else if (streq("rectangle", key)) {
-		if (csq->rect == NULL) {
-			csq->rect = calloc(1, sizeof(bspwm_rect_t));
-		}
-		if (!parse_rectangle(value, csq->rect)) {
-			free(csq->rect);
-			csq->rect = NULL;
-		}
-	} else if (streq("honor_size_hints", key)) {
-		if (!parse_honor_size_hints_mode(value, &csq->honor_size_hints)) {
-			csq->honor_size_hints = HONOR_SIZE_HINTS_DEFAULT;
-		}
-	} else if (parse_bool(value, &v)) {
-		if (streq("hidden", key)) {
-			csq->hidden = v;
-		}
-#define SETCSQ(name) \
-		else if (streq(#name, key)) { \
-			csq->name = v; \
-		}
-		SETCSQ(sticky)
-		SETCSQ(private)
-		SETCSQ(locked)
-		SETCSQ(marked)
-		SETCSQ(center)
-		SETCSQ(follow)
-		SETCSQ(manage)
-		SETCSQ(focus)
-		SETCSQ(border)
-#undef SETCSQ
 	}
 }
 

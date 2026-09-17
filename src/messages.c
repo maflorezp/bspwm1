@@ -1244,28 +1244,6 @@ end:
 	return;
 }
 
-/* The keys a rule consequence accepts. Most of them are exactly what
- * `parse_key_value()` (src/rule.c) understands; `ignore_tile_limits` is the
- * one exception — `parse_key_value()` never sees it, `effect_has()`
- * (src/tree.c) reads it straight out of `rule->effect` instead — but it
- * still has to be accepted here, or a valid consequence would be refused as
- * an unknown key. */
-static bool is_consequence_key(const char *key)
-{
-	static const char *keys[] = {
-		"monitor", "desktop", "node", "split_dir", "split_ratio", "state", "layer",
-		"honor_size_hints", "rectangle", "hidden", "sticky", "private", "locked",
-		"marked", "center", "follow", "manage", "focus", "border",
-		"ignore_tile_limits", NULL,
-	};
-	for (const char **k = keys; *k != NULL; k++) {
-		if (streq(*k, key)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void cmd_rule(char **args, int num, FILE *rsp)
 {
 	if (num < 1) {
@@ -1354,7 +1332,7 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						}
 						memcpy(key, *args, key_len);
 						key[key_len] = '\0';
-						if (!is_consequence_key(key)) {
+						if (!rule_is_consequence_key(key)) {
 							fail(rsp, "rule: Unknown key: '%s'.\n", key);
 							effect_ok = false;
 							break;
@@ -1496,7 +1474,7 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						snprintf(rule->cause + used, sizeof(rule->cause) - used,
 						         "%s%s", used > 0 ? " " : "", printed);
 #pragma GCC diagnostic pop
-					} else if (is_consequence_key(key)) {
+					} else if (rule_is_consequence_key(key)) {
 						/* Consequences take neither operator: they are
 						 * always exact and case-sensitive, the way
 						 * parse_key_value() (src/rule.c) reads them. */

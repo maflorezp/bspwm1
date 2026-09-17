@@ -58,6 +58,28 @@ assert_ok "add a rule with ignore_tile_limits" \
 	$BSPC rule -a class=kitty ignore_tile_limits=on
 drop_tail "the rule with ignore_tile_limits is removed"
 
+# Every key a consequence can take, one rule each. cmd_rule() refuses an
+# unknown key outright, so a key parse_key_value() (src/rule.c) reads but
+# cmd_rule() does not know would turn a legitimate rule into an error: the
+# two have to name the same keys, and this is what says so.
+CSQ_BEFORE=$($BSPC rule -l | wc -l)
+CSQ_COUNT=0
+for CSQ in \
+	'monitor=^1' 'desktop=^1' 'node=^1' 'split_dir=north' 'split_ratio=0.3' \
+	'state=floating' 'layer=normal' 'honor_size_hints=yes' 'rectangle=100x100+0+0' \
+	'hidden=on' 'sticky=on' 'private=on' 'locked=on' 'marked=on' 'center=on' \
+	'follow=on' 'manage=on' 'focus=on' 'border=on' 'ignore_tile_limits=on'
+do
+	assert_ok "the consequence $CSQ is accepted" $BSPC rule -a class=kitty "$CSQ"
+	CSQ_COUNT=$((CSQ_COUNT + 1))
+done
+assert_eq "every consequence key gave a rule" "$((CSQ_BEFORE + CSQ_COUNT))" \
+	"$($BSPC rule -l | wc -l)"
+while [ "$($BSPC rule -l | wc -l)" -gt "$CSQ_BEFORE" ] ; do
+	$BSPC rule -r tail
+done
+assert_eq "the consequence key rules are removed" "$CSQ_BEFORE" "$($BSPC rule -l | wc -l)"
+
 assert_ok "add a rule with conditions" \
 	$BSPC rule -a class=Pavucontrol/i state=floating
 drop_tail "the case insensitive rule is removed"
