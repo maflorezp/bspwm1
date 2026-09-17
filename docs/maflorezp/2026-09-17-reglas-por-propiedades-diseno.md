@@ -288,3 +288,18 @@ críticos, 6 importantes y 15 menores. Una ronda arregló los
   - una clase con `=` escapado (`foo\=bar`) se lista como `foo=bar:*:*`, y eso no se puede volver
     a dar de alta tal cual (pasa lo mismo con los `:` escapados).
 - **Sin prueba automática del autocompletado.** Se comprobó a mano con `zpty`.
+
+### El manual se genera, no se edita
+
+`doc/bspwm.1` sale de `doc/bspwm.1.asciidoc` con `make doc` (paquete `asciidoc`, instalado el
+2026-09-17). Hasta ese día las ramas lo editaban a mano. Por eso la cabecera se quedó en
+`v1.4.0-9 · 08/24/2026`, y `rule-match` escapaba de más en la fuente: una regeneración habría
+mostrado `\~=` y `*:*:\*` en el manual.
+
+- **Siempre** `make doc VERSION=v1.6.2`: con la versión fija, todas las ramas producen la misma
+  cabecera.
+- **Todas las ramas el mismo día.** La fecha también va en la cabecera, y así git funde las ramas
+  sin conflicto, en `local` y en upstream. Si una rama se regenera otro día, habrá un conflicto
+  de una línea con las demás.
+- **Comprobación:** tras regenerar, `git diff` debe mostrar sólo la cabecera más lo que la rama
+  documenta, y `grep -c '\\e' doc/bspwm.1` debe dar 0.
