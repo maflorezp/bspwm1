@@ -306,18 +306,31 @@ _bspc() {
 					return
 					;;
 				(remove*)
-					compset -P '*:'
+					local rule_line
+					local -a conditions expl
+					# A rule written as conditions is removed by its whole cause,
+					# exactly as `bspc rule -l` prints it; only the old
+					# CLASS:INSTANCE:NAME pattern is completed field by field.
+					[[ "$PREFIX" == [a-z_]##(|\~)=* ]] || compset -P '*:'
 					bspc rule -l 2> /dev/null |
-						while IFS=" " read target settings ;do
-							by_index+="^$((++index)):${target} ${settings}"
-							if [ -n "$IPREFIX" ] ;then
+						while IFS= read -r rule_line ;do
+							# An effect never holds a space, so the last arrow is
+							# the one that ends the cause.
+							target=${rule_line% [-=]> *}
+							by_index+="^$((++index)):${rule_line}"
+							if [[ "$target" == [a-z_]##(|\~)=* ]] ;then
+								[[ -z "$IPREFIX" ]] && conditions+="$target"
+							elif [ -n "$IPREFIX" ] ;then
 								completions+="${target#*:}"
 							else
 								completions+="${target%:*}"
 							fi
 						done
-					[[ -z "$IPREFIX" ]] &&
+					if [[ -z "$IPREFIX" ]] ;then
 						_describe 'remove rule by position' '(head tail)' -J by_index -- by_index -J by_index
+						(( $#conditions )) &&
+							_wanted conditions expl 'remove rule by conditions' compadd -a conditions
+					fi
 					;;
 				(*)
 					return

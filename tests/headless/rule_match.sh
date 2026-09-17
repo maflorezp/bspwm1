@@ -189,6 +189,26 @@ assert_eq "and both are listed whole" "1" \
 	"$($BSPC rule -l | grep -c "^kitty:\*:\* => desktop=$D237 sticky=on\$")"
 drop_tail "the two consequences filling the effect are removed"
 
+# `rule -r` takes back the cause `rule -l` prints, in either form, so that
+# listing a rule, copying its cause and removing it works for conditions
+# too. The cause is compared whole: a rule with one more condition, or a
+# different case marker, is a different rule and stays.
+assert_ok "add a rule to remove by its conditions" \
+	$BSPC rule -a class=kitty 'instance~=^crx_/i' state=floating
+drop_cause "a rule is removed by the conditions rule -l prints for it" \
+	'class=kitty instance~=^crx_/i'
+assert_ok "add a rule with two conditions to keep" \
+	$BSPC rule -a class=kitty instance=term state=floating
+RM_BEFORE=$($BSPC rule -l | wc -l)
+$BSPC rule -r class=kitty
+assert_eq "a cause does not remove a rule with more conditions" "$RM_BEFORE" \
+	"$($BSPC rule -l | wc -l)"
+$BSPC rule -r class=kitty/i
+assert_eq "nor one with a different case marker" "$RM_BEFORE" \
+	"$($BSPC rule -l | wc -l)"
+drop_cause "the rule with two conditions is removed by its own cause" \
+	'class=kitty instance=term'
+
 # Everything that must be refused, with the rule never added. Chromium is
 # still the only rule on the list, so a real BEFORE also proves a refusal
 # does not disturb what was already there.
@@ -238,6 +258,12 @@ assert_eq "a refused rule is not added" "$BEFORE" "$($BSPC rule -l | wc -l)"
 
 # Chromium was needed all the way through the block above; drop it now.
 drop_tail "the old-form Chromium rule is removed"
+
+# The old catch-all still removes every rule, whatever form it was written in.
+assert_ok "add a rule with conditions to sweep" $BSPC rule -a class=kitty state=floating
+assert_ok "add an old-form rule to sweep" $BSPC rule -a kitty state=floating
+$BSPC rule -r '*:*:*'
+assert_eq "*:*:* removes the rules of both forms" "0" "$($BSPC rule -l | wc -l)"
 
 # End-to-end: real windows, declaring class, role, type and parent, matched
 # against real rules. Needs test_window built with --role/--type/--transient

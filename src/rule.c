@@ -94,6 +94,23 @@ void remove_rule_by_cause(char *cause)
         return;
     }
 
+    /* A rule written as conditions has no CLASS:INSTANCE:NAME to take
+     * apart: it is removed by the very text `rule -l` prints for it,
+     * compared whole, so a rule with one more condition or a different
+     * operator is a different rule and stays. `*:*:*` is not written as
+     * conditions and still goes the old way below, removing every rule. */
+    if (rule_is_key_value(cause)) {
+        rule_t *r = rule_head;
+        while (r != NULL) {
+            rule_t *next = r->next;
+            if (streq(r->cause, cause)) {
+                remove_rule(r);
+            }
+            r = next;
+        }
+        return;
+    }
+
     rule_t *r = rule_head;
     struct tokenize_state state;
     char *class_name = tokenize_with_escape(&state, cause, COL_TOK[0]);
