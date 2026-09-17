@@ -1244,6 +1244,25 @@ end:
 	return;
 }
 
+/* The keys a rule consequence accepts, exactly the ones `parse_key_value()`
+ * (src/rule.c) understands. `ignore_tile_limits` is deliberately absent:
+ * `effect_has()` (src/tree.c) reads it straight out of `rule->effect`
+ * instead. */
+static bool is_consequence_key(const char *key)
+{
+	static const char *keys[] = {
+		"monitor", "desktop", "node", "split_dir", "split_ratio", "state", "layer",
+		"honor_size_hints", "rectangle", "hidden", "sticky", "private", "locked",
+		"marked", "center", "follow", "manage", "focus", "border", NULL,
+	};
+	for (const char **k = keys; *k != NULL; k++) {
+		if (streq(*k, key)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void cmd_rule(char **args, int num, FILE *rsp)
 {
 	if (num < 1) {
@@ -1260,74 +1279,196 @@ void cmd_rule(char **args, int num, FILE *rsp)
 			}
 			rule_t *rule = make_rule();
 
-			struct tokenize_state state;
-			char *class_name = tokenize_with_escape(&state, args[0], COL_TOK[0]);
-			char *instance_name = tokenize_with_escape(&state, NULL, COL_TOK[0]);
-			char *name = tokenize_with_escape(&state, NULL, COL_TOK[0]);
-			if (!class_name || !instance_name || !name) {
-				free(rule);
+			/* A first argument with an `=` means the new form: a list of
+			 * `property=pattern` conditions mixed with the consequences.
+			 * The old CLASS[:INSTANCE[:NAME]] pattern never contains one. */
+			bool new_form = (strchr(args[0], '=') != NULL);
+
+			if (!new_form) {
+				struct tokenize_state state;
+				char *class_name = tokenize_with_escape(&state, args[0], COL_TOK[0]);
+				char *instance_name = tokenize_with_escape(&state, NULL, COL_TOK[0]);
+				char *name = tokenize_with_escape(&state, NULL, COL_TOK[0]);
+				if (!class_name || !instance_name || !name) {
+					free(rule);
+					free(class_name);
+					free(instance_name);
+					free(name);
+					return;
+				}
+
+				char err[MAXLEN];
+				const char *fields[3] = {class_name, instance_name, name};
+				const rule_prop_t props[3] = {RULE_PROP_CLASS, RULE_PROP_INSTANCE, RULE_PROP_NAME};
+				bool ok = true;
+				for (int f = 0; f < 3 && ok; f++) {
+					/* Only the instance and the name fall back to "*" when
+					 * empty. The class is mandatory, so an empty one only
+					 * happens through an explicit "::x"; it stays a literal
+					 * empty condition, which never matches, same as before
+					 * this module existed. */
+					const char *value = fields[f];
+					if (props[f] != RULE_PROP_CLASS && value[0] == '\0') {
+						value = MATCH_ANY;
+					}
+					if (streq(value, MATCH_ANY)) {
+						continue;
+					}
+					/* 0: the old syntax is exact and case-sensitive, with
+					 * no `~` or `/i` operator to read from the value. */
+					if (!rule_cond_compile(&rule->conds[props[f]], props[f], value, 0, err, sizeof(err))) {
+						fail(rsp, "rule: %s: %s\n", rule_prop_name(props[f]), err);
+						ok = false;
+					}
+				}
+				snprintf(rule->cause, sizeof(rule->cause), "%s:%s:%s",
+				         class_name,
+				         instance_name[0] == '\0' ? MATCH_ANY : instance_name,
+				         name[0] == '\0' ? MATCH_ANY : name);
 				free(class_name);
 				free(instance_name);
 				free(name);
-				return;
-			}
+				if (!ok) {
+					remove_rule(rule);   /* frees the conditions compiled so far */
+					return;
+				}
 
-			char err[MAXLEN];
-			const char *fields[3] = {class_name, instance_name, name};
-			const rule_prop_t props[3] = {RULE_PROP_CLASS, RULE_PROP_INSTANCE, RULE_PROP_NAME};
-			bool ok = true;
-			for (int f = 0; f < 3 && ok; f++) {
-				/* Only the instance and the name fall back to "*" when
-				 * empty. The class is mandatory, so an empty one only
-				 * happens through an explicit "::x"; it stays a literal
-				 * empty condition, which never matches, same as before
-				 * this module existed. */
-				const char *value = fields[f];
-				if (props[f] != RULE_PROP_CLASS && value[0] == '\0') {
-					value = MATCH_ANY;
-				}
-				if (streq(value, MATCH_ANY)) {
-					continue;
-				}
-				/* 0: the old syntax is exact and case-sensitive, with
-				 * no `~` or `/i` operator to read from the value. */
-				if (!rule_cond_compile(&rule->conds[props[f]], props[f], value, 0, err, sizeof(err))) {
-					fail(rsp, "rule: %s: %s\n", rule_prop_name(props[f]), err);
-					ok = false;
-				}
-			}
-			snprintf(rule->cause, sizeof(rule->cause), "%s:%s:%s",
-			         class_name,
-			         instance_name[0] == '\0' ? MATCH_ANY : instance_name,
-			         name[0] == '\0' ? MATCH_ANY : name);
-			free(class_name);
-			free(instance_name);
-			free(name);
-			if (!ok) {
-				remove_rule(rule);   /* frees the conditions compiled so far */
-				return;
-			}
-
-			num--, args++;
-			size_t i = 0;
-			while (num > 0) {
-				if (streq("-o", *args) || streq("--one-shot", *args)) {
-					rule->one_shot = true;
-				} else {
-					for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
-						rule->effect[i] = (*args)[j];
-					}
-					if (num > 1 && i < sizeof(rule->effect)) {
-						rule->effect[i++] = ' ';
-					}
-				}
 				num--, args++;
+				size_t i = 0;
+				bool effect_ok = true;
+				while (num > 0 && effect_ok) {
+					if (streq("-o", *args) || streq("--one-shot", *args)) {
+						rule->one_shot = true;
+					} else {
+						/* Validate the consequence key too, so a typo like
+						 * `staet=floating` fails loudly instead of being
+						 * silently dropped by parse_key_value(). */
+						char *sep = strchr(*args, '=');
+						size_t key_len = sep != NULL ? (size_t) (sep - *args) : strlen(*args);
+						char key[MAXLEN];
+						if (key_len >= sizeof(key)) {
+							key_len = sizeof(key) - 1;
+						}
+						memcpy(key, *args, key_len);
+						key[key_len] = '\0';
+						if (!is_consequence_key(key)) {
+							fail(rsp, "rule: Unknown key: '%s'.\n", key);
+							effect_ok = false;
+							break;
+						}
+						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
+							rule->effect[i] = (*args)[j];
+						}
+						if (num > 1 && i < sizeof(rule->effect)) {
+							rule->effect[i++] = ' ';
+						}
+					}
+					num--, args++;
+				}
+				if (!effect_ok) {
+					remove_rule(rule);
+					return;
+				}
+				if (i >= sizeof(rule->effect)) {
+					i = sizeof(rule->effect) - 1;
+				}
+				rule->effect[i] = '\0';
+				add_rule(rule);
+			} else {
+				size_t i = 0;
+				bool ok = true;
+				while (num > 0 && ok) {
+					if (streq("-o", *args) || streq("--one-shot", *args)) {
+						rule->one_shot = true;
+						num--, args++;
+						continue;
+					}
+					char *sep = strchr(*args, '=');
+					if (sep == NULL) {
+						fail(rsp, "rule: Not a key=value argument: '%s'.\n", *args);
+						ok = false;
+						break;
+					}
+					/* A `~` right before the `=` marks a regular
+					 * expression; it belongs to the operator, not to the
+					 * key, and never reaches rule_cond_compile(). */
+					bool is_regex = (sep > *args && sep[-1] == '~');
+					size_t key_len = (size_t) (sep - *args) - (is_regex ? 1 : 0);
+					char key[MAXLEN];
+					if (key_len >= sizeof(key)) {
+						fail(rsp, "rule: Key too long: '%s'.\n", *args);
+						ok = false;
+						break;
+					}
+					memcpy(key, *args, key_len);
+					key[key_len] = '\0';
+					const char *value = sep + 1;
+
+					rule_prop_t prop;
+					if (rule_prop_from_key(key, &prop)) {
+						if (rule->conds[prop].used) {
+							fail(rsp, "rule: Repeated condition: '%s'.\n", key);
+							ok = false;
+							break;
+						}
+						/* A trailing `/i` on the value marks
+						 * case-insensitivity; it is not part of the
+						 * pattern itself. */
+						char pattern[MAXLEN];
+						snprintf(pattern, sizeof(pattern), "%s", value);
+						size_t plen = strlen(pattern);
+						bool ignore_case = (plen >= 2 && streq(pattern + plen - 2, "/i"));
+						if (ignore_case) {
+							pattern[plen - 2] = '\0';
+						}
+						unsigned int flags = (is_regex ? RULE_COND_REGEX : 0) |
+						                      (ignore_case ? RULE_COND_ICASE : 0);
+						char err[MAXLEN];
+						if (!rule_cond_compile(&rule->conds[prop], prop, pattern, flags, err, sizeof(err))) {
+							fail(rsp, "rule: %s: %s\n", key, err);
+							ok = false;
+							break;
+						}
+						/* Keep the condition, in order, exactly as
+						 * `rule -l` will print it. */
+						char printed[MAXLEN];
+						rule_cond_print(&rule->conds[prop], prop, printed, sizeof(printed));
+						size_t used = strlen(rule->cause);
+						snprintf(rule->cause + used, sizeof(rule->cause) - used,
+						         "%s%s", used > 0 ? " " : "", printed);
+					} else if (is_regex) {
+						fail(rsp, "rule: %s: Not a condition, can't take an operator.\n", key);
+						ok = false;
+						break;
+					} else if (is_consequence_key(key)) {
+						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
+							rule->effect[i] = (*args)[j];
+						}
+						if (num > 1 && i < sizeof(rule->effect)) {
+							rule->effect[i++] = ' ';
+						}
+					} else {
+						fail(rsp, "rule: Unknown key: '%s'.\n", key);
+						ok = false;
+						break;
+					}
+					num--, args++;
+				}
+				if (i >= sizeof(rule->effect)) {
+					i = sizeof(rule->effect) - 1;
+				}
+				rule->effect[i] = '\0';
+				if (!ok) {
+					remove_rule(rule);
+					return;
+				}
+				if (rule->cause[0] == '\0') {
+					/* No condition at all: matches everything, just like a
+					 * fully wildcarded old-form pattern. */
+					snprintf(rule->cause, sizeof(rule->cause), "%s", "*:*:*");
+				}
+				add_rule(rule);
 			}
-			if (i >= sizeof(rule->effect)) {
-				i = sizeof(rule->effect) - 1;
-			}
-			rule->effect[i] = '\0';
-			add_rule(rule);
 		} else if (streq("-r", *args) || streq("--remove", *args)) {
 			num--, args++;
 			if (num < 1) {
