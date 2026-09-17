@@ -431,7 +431,23 @@ static const char *window_type_name(bspwm_window_type_t type)
 	}
 }
 
-/* Fill `props` from what the rules already read plus the role. */
+/* Whether any rule has a condition on the role. Reading WM_WINDOW_ROLE is a
+ * round-trip to the server for every window managed, which is only worth
+ * paying when some rule is going to look at the answer. The list is short,
+ * and walking it keeps no count that a rule freed without ever being added
+ * (cmd_rule()'s error paths) could throw off. */
+static bool rules_need_role(void)
+{
+	for (rule_t *r = rule_head; r != NULL; r = r->next) {
+		if (r->conds[RULE_PROP_ROLE].used) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Fill `props` from what the rules already read, plus the role when a rule
+ * needs it; otherwise the role is left empty, which no rule is looking at. */
 static void collect_window_props(bspwm_wid_t win, rule_consequence_t *csq,
                                  bspwm_window_type_t type, bspwm_wid_t transient_for,
                                  window_props_t *props)
@@ -440,7 +456,9 @@ static void collect_window_props(bspwm_wid_t win, rule_consequence_t *csq,
 	snprintf(props->instance_name, sizeof(props->instance_name), "%s", csq->instance_name);
 	snprintf(props->name, sizeof(props->name), "%s", csq->name);
 	props->role[0] = '\0';
-	backend_get_window_role(win, props->role, sizeof(props->role));
+	if (rules_need_role()) {
+		backend_get_window_role(win, props->role, sizeof(props->role));
+	}
 	props->type = window_type_name(type);
 	props->transient = (transient_for != BSPWM_WID_NONE) ? "on" : "off";
 }

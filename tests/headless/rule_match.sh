@@ -320,7 +320,11 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	sleep 0.3
 	drop_tail "the two-condition PWA rule is removed after the window test"
 
-	# The role.
+	# The role. WM_WINDOW_ROLE is only read when some rule asks for it, so
+	# the role rule goes behind one that does not: the role has to be read
+	# because of a rule anywhere on the list, not just the first one.
+	assert_ok "add a rule that does not look at the role" \
+		$BSPC rule -a class=RmOther sticky=on
 	assert_ok "add the role rule" $BSPC rule -a role=pop-up sticky=on
 	./test_window rm-role RmRole --role pop-up >/dev/null 2>&1 &
 	sleep 0.5
@@ -329,6 +333,16 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	$BSPC node "$W" -c || true
 	sleep 0.3
 	drop_tail "the role rule is removed after the window test"
+	# With no rule asking for it, the role is not read, and the window is
+	# left alone.
+	./test_window rm-role RmRole --role pop-up >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "with no role rule left, the same window is not sticky" "false" \
+		"$(rule_flag "$W" sticky)"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	drop_tail "the rule that does not look at the role is removed"
 
 	# The window type. type=dialog is not tested against bspwm's own
 	# floating-by-default behaviour for dialogs — it would not tell the rule

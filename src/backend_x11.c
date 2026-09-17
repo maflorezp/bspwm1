@@ -63,6 +63,7 @@ xcb_ewmh_connection_t *ewmh;
 xcb_atom_t WM_STATE;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_DELETE_WINDOW;
+xcb_atom_t WM_WINDOW_ROLE;
 
 uint8_t randr_base;
 
@@ -339,13 +340,15 @@ bool backend_get_window_role(bspwm_wid_t win, char *role, size_t len)
 		return false;
 	}
 	role[0] = '\0';
-	xcb_atom_t atom;
-	get_atom("WM_WINDOW_ROLE", &atom);
-	if (atom == XCB_ATOM_NONE) {
+	/* Interned once, in x11_setup_atoms(), like the other WM_* atoms. */
+	if (WM_WINDOW_ROLE == XCB_ATOM_NONE) {
 		return false;
 	}
+	/* long_length counts 32-bit units, not bytes: ask for just enough of
+	 * them to fill `role`. */
 	xcb_get_property_reply_t *reply = xcb_get_property_reply(dpy,
-		xcb_get_property(dpy, 0, win, atom, XCB_ATOM_STRING, 0, (uint32_t) len), NULL);
+		xcb_get_property(dpy, 0, win, WM_WINDOW_ROLE, XCB_ATOM_STRING, 0,
+		                 (uint32_t) ((len + 3) / 4)), NULL);
 	if (reply == NULL) {
 		return false;
 	}
@@ -777,6 +780,7 @@ void x11_setup_atoms(void)
 	get_atom("WM_STATE", &WM_STATE);
 	get_atom("WM_DELETE_WINDOW", &WM_DELETE_WINDOW);
 	get_atom("WM_TAKE_FOCUS", &WM_TAKE_FOCUS);
+	get_atom("WM_WINDOW_ROLE", &WM_WINDOW_ROLE);
 }
 
 void x11_setup_randr(void)
