@@ -1277,11 +1277,21 @@ void cmd_rule(char **args, int num, FILE *rsp)
 			const rule_prop_t props[3] = {RULE_PROP_CLASS, RULE_PROP_INSTANCE, RULE_PROP_NAME};
 			bool ok = true;
 			for (int f = 0; f < 3 && ok; f++) {
-				const char *value = (fields[f][0] == '\0') ? MATCH_ANY : fields[f];
+				/* Only the instance and the name fall back to "*" when
+				 * empty. The class is mandatory, so an empty one only
+				 * happens through an explicit "::x"; it stays a literal
+				 * empty condition, which never matches, same as before
+				 * this module existed. */
+				const char *value = fields[f];
+				if (props[f] != RULE_PROP_CLASS && value[0] == '\0') {
+					value = MATCH_ANY;
+				}
 				if (streq(value, MATCH_ANY)) {
 					continue;
 				}
-				if (!rule_cond_compile(&rule->conds[props[f]], props[f], value, err, sizeof(err))) {
+				/* 0: the old syntax is exact and case-sensitive, with
+				 * no `~` or `/i` operator to read from the value. */
+				if (!rule_cond_compile(&rule->conds[props[f]], props[f], value, 0, err, sizeof(err))) {
 					fail(rsp, "rule: %s: %s\n", rule_prop_name(props[f]), err);
 					ok = false;
 				}

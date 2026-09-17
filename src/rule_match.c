@@ -83,7 +83,7 @@ static bool value_in(const char *const *list, const char *value)
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 
 bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
-                       char *err, size_t len)
+                       unsigned int flags, char *err, size_t len)
 {
 	if (cond == NULL || value == NULL || err == NULL || len == 0) {
 		return false;
@@ -97,19 +97,10 @@ bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
 		return false;
 	}
 	snprintf(cond->pattern, sizeof(cond->pattern), "%s", value);
+	snprintf(cond->text, sizeof(cond->text), "%s", value);
 
-	const char *text = value;
-	if (text[0] == '~') {
-		cond->is_regex = true;
-		text++;
-	}
-	snprintf(cond->text, sizeof(cond->text), "%s", text);
-
-	size_t text_len = strlen(cond->text);
-	if (text_len >= 2 && strcmp(cond->text + text_len - 2, "/i") == 0) {
-		cond->ignore_case = true;
-		cond->text[text_len - 2] = '\0';
-	}
+	cond->is_regex = (flags & RULE_COND_REGEX) != 0;
+	cond->ignore_case = (flags & RULE_COND_ICASE) != 0;
 
 	if (prop == RULE_PROP_TYPE || prop == RULE_PROP_TRANSIENT) {
 		const char *const *list = (prop == RULE_PROP_TYPE) ? type_values : transient_values;
@@ -130,8 +121,8 @@ bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
 	}
 
 	if (cond->is_regex) {
-		int flags = REG_EXTENDED | REG_NOSUB | (cond->ignore_case ? REG_ICASE : 0);
-		int status = regcomp(&cond->preg, cond->text, flags);
+		int regex_flags = REG_EXTENDED | REG_NOSUB | (cond->ignore_case ? REG_ICASE : 0);
+		int status = regcomp(&cond->preg, cond->text, regex_flags);
 		if (status != 0) {
 			regerror(status, &cond->preg, err, len);
 			regfree(&cond->preg);
@@ -200,7 +191,11 @@ void rule_cond_print(const rule_cond_t *cond, rule_prop_t prop, char *buf, size_
 		buf[0] = '\0';
 		return;
 	}
-	snprintf(buf, len, "%s=%s", rule_prop_name(prop), cond->pattern);
+	/* The `~` marks a regex right on the operator; a trailing `/i` on the
+	 * value marks case-insensitivity. Neither lives in cond->pattern: both
+	 * come from the flags the caller compiled this condition with. */
+	snprintf(buf, len, "%s%s=%s%s", rule_prop_name(prop), cond->is_regex ? "~" : "",
+	         cond->pattern, cond->ignore_case ? "/i" : "");
 }
 
 #pragma GCC diagnostic pop

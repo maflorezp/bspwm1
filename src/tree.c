@@ -383,8 +383,11 @@ static bool node_ignores_tile_limits(node_t *n)
 	const char *instance_name = n->client->instance_name;
 
 	for (rule_t *r = rule_head; r != NULL; r = r->next) {
-		/* The title, the type and the role are not known this early, so only
-		 * rules that look at the class and the instance count. */
+		/* The title, the type, the role and whether the window is
+		 * transient are not known this early, so only rules that look at
+		 * the class and the instance count. Testing the class alone meant
+		 * any rule with a wildcard class carrying this effect silently
+		 * switched tile limits off for every window. */
 		if (r->conds[RULE_PROP_NAME].used || r->conds[RULE_PROP_TYPE].used ||
 		    r->conds[RULE_PROP_ROLE].used || r->conds[RULE_PROP_TRANSIENT].used) {
 			continue;
