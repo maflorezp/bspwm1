@@ -176,6 +176,54 @@ int main(void)
 	      rule_cond_matches(&cond, "tab_abc"));
 	rule_cond_free(&cond);
 
+	/* The pattern buffer holds 255 characters: that many compile, one more
+	 * is refused and the reason gives the limit. */
+	char edge[RULE_PATTERN_MAXLEN + 1];
+	memset(edge, 'c', RULE_PATTERN_MAXLEN - 1);
+	edge[RULE_PATTERN_MAXLEN - 1] = '\0';
+	check("a 255-character pattern compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_CLASS, edge, 0, err, sizeof(err)));
+	check("and it matches itself whole", true, rule_cond_matches(&cond, edge));
+	rule_cond_free(&cond);
+	memset(edge, 'c', RULE_PATTERN_MAXLEN);
+	edge[RULE_PATTERN_MAXLEN] = '\0';
+	check("a 256-character pattern is refused", false,
+	      rule_cond_compile(&cond, RULE_PROP_CLASS, edge, 0, err, sizeof(err)));
+	check("and the error gives the limit", true, strstr(err, "255") != NULL);
+
+	/* transient takes true/false as well as on/off: it compares the
+	 * normalized value, and still lists the one that was written. */
+	check("transient=true compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_TRANSIENT, "true", 0, err, sizeof(err)));
+	check("transient=true matches a child window", true, rule_cond_matches(&cond, "on"));
+	check("transient=true does not match a window with no parent", false,
+	      rule_cond_matches(&cond, "off"));
+	check_str("transient=true keeps the value it was written with", "true",
+	          rule_cond_pattern(&cond));
+	rule_cond_print(&cond, RULE_PROP_TRANSIENT, printed, sizeof(printed));
+	check_str("transient=true prints as it was written", "transient=true", printed);
+	rule_cond_free(&cond);
+	check("transient=false compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_TRANSIENT, "false", 0, err, sizeof(err)));
+	check("transient=false matches a window with no parent", true,
+	      rule_cond_matches(&cond, "off"));
+	check("transient=false does not match a child window", false,
+	      rule_cond_matches(&cond, "on"));
+	rule_cond_free(&cond);
+
+	/* An empty pattern is a real condition — it matches only an empty
+	 * property — and prints as such; an unused one prints nothing. */
+	check("an empty pattern compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_ROLE, "", 0, err, sizeof(err)));
+	check("an empty pattern matches an empty property", true, rule_cond_matches(&cond, ""));
+	check("an empty pattern does not match a set one", false,
+	      rule_cond_matches(&cond, "pop-up"));
+	rule_cond_print(&cond, RULE_PROP_ROLE, printed, sizeof(printed));
+	check_str("an empty pattern prints with nothing after the =", "role=", printed);
+	rule_cond_free(&cond);
+	rule_cond_print(&cond, RULE_PROP_ROLE, printed, sizeof(printed));
+	check_str("an unused condition prints nothing", "", printed);
+
 	/* A whole rule: every condition has to hold. */
 	rule_cond_t conds[RULE_PROP_COUNT];
 	memset(conds, 0, sizeof(conds));
