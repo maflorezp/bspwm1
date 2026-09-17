@@ -31,7 +31,7 @@ unitarias en C y pruebas de extremo a extremo en Xvfb con `tests/run_headless`.
   exactamente igual; la configuración actual de Mauricio tiene que arrancar sin cambios.
 - **Propiedades admitidas:** `class`, `instance`, `name`, `type`, `role`, `transient`.
 - **Formas de comparar:** exacta (`class=kitty`), exacta sin mayúsculas (`class=kitty/i`), regex
-  POSIX extendida (`class=~^crx_`) y regex sin mayúsculas (`class=~^crx_/i`).
+  POSIX extendida (`class~=^crx_`) y regex sin mayúsculas (`class~=^crx_/i`).
 - **Valores de `type`:** `normal`, `dialog`, `utility`, `toolbar`, `dock`, `desktop`,
   `notification`. **De `transient`:** `on`, `off`, `true`, `false`.
 - **Errores al crear la regla:** regex inválida, `type` o `transient` con valor inválido,
@@ -50,6 +50,12 @@ unitarias en C y pruebas de extremo a extremo en Xvfb con `tests/run_headless`.
 ---
 
 ### Task 1: Módulo `rule_match`
+
+> **Nota del 2026-09-17, posterior a escribir el plan.** Tras la ronda de corrección de la tarea
+> 3, `rule_cond_compile` recibe las marcas de quien llama —`RULE_COND_REGEX` y `RULE_COND_ICASE`,
+> declaradas en `src/rule_match.h`— y **no interpreta el valor**: ni el `~` ni el sufijo `/i`. La
+> regex se marca con el operador `~=` del argumento, y el sufijo `/i` lo quita el parseo de la
+> tarea 4. El código de esta tarea que aparece abajo es el original, anterior a ese cambio.
 
 **Files:**
 - Create: `src/rule_match.h`, `src/rule_match.c`, `tests/test_rule_match.c`
@@ -181,7 +187,7 @@ int main(void)
 	check_str("the pattern keeps its shape", "~^crx_/i", rule_cond_pattern(&cond));
 	char printed[512];
 	rule_cond_print(&cond, RULE_PROP_INSTANCE, printed, sizeof(printed));
-	check_str("printing gives back the condition", "instance=~^crx_/i", printed);
+	check_str("printing gives back the condition", "instance~=^crx_/i", printed);
 	rule_cond_free(&cond);
 
 	/* A whole rule: every condition has to hold. */
@@ -905,22 +911,22 @@ Añade al final de `tests/headless/rule_match.sh`:
 assert_ok "add a rule with conditions" \
 	$BSPC rule -a class=Pavucontrol/i state=floating
 assert_ok "add a rule with a regular expression" \
-	$BSPC rule -a 'class=~^(eog|feh)$' state=floating
+	$BSPC rule -a 'class~=^(eog|feh)$' state=floating
 assert_ok "add a rule with two conditions" \
-	$BSPC rule -a class=Google-chrome instance=~^crx_ center=on
+	$BSPC rule -a class=Google-chrome instance~=^crx_ center=on
 assert_ok "add a rule with a window type" $BSPC rule -a type=dialog center=on
 assert_ok "add a rule with a role" $BSPC rule -a role=pop-up state=floating
 assert_ok "add a rule for child windows" $BSPC rule -a transient=on state=floating
 
 RULES=$($BSPC rule -l)
 assert_eq "the conditions are listed as they were written" "1" \
-	"$(printf '%s\n' "$RULES" | grep -c '^class=Google-chrome instance=~\^crx_ =>')"
+	"$(printf '%s\n' "$RULES" | grep -c '^class=Google-chrome instance~=\^crx_ =>')"
 assert_eq "the old form is still listed the old way" "1" \
 	"$(printf '%s\n' "$RULES" | grep -c '^Chromium:\*:\* =>')"
 
 # Everything that must be refused, with the rule never added.
 BEFORE=$($BSPC rule -l | wc -l)
-assert_fail "reject a broken regular expression" $BSPC rule -a 'class=~^(eog' state=floating
+assert_fail "reject a broken regular expression" $BSPC rule -a 'class~=^(eog' state=floating
 assert_fail "reject an unknown window type" $BSPC rule -a type=popup state=floating
 assert_fail "reject an unknown key" $BSPC rule -a clas=kitty state=floating
 assert_fail "reject a repeated condition" $BSPC rule -a class=a class=b state=floating
@@ -928,7 +934,7 @@ assert_fail "reject an unknown consequence" $BSPC rule -a class=kitty staet=floa
 assert_eq "a refused rule is not added" "$BEFORE" "$($BSPC rule -l | wc -l)"
 
 $BSPC rule -r class=Pavucontrol/i || true
-$BSPC rule -r 'class=~^(eog|feh)$' || true
+$BSPC rule -r 'class~=^(eog|feh)$' || true
 $BSPC rule -r class=Google-chrome || true
 $BSPC rule -r type=dialog || true
 $BSPC rule -r role=pop-up || true
@@ -954,7 +960,8 @@ En `cmd_rule`, dentro de la rama `-a`, antes de tokenizar el patrón:
 
 ```c
 			/* A first argument with an `=` means the new form: a list of
-			 * `property=pattern` conditions mixed with the consequences. */
+			 * `property=pattern` or `property~=pattern` conditions mixed
+			 * with the consequences. */
 			bool new_form = (strchr(args[0], '=') != NULL);
 ```
 
@@ -1004,8 +1011,14 @@ El bucle de la forma nueva:
 					ok = false;
 					break;
 				}
-				char key[MAXLEN];
+				/* `~=` asks for a regular expression; `=` compares as written. */
+				unsigned int flags = 0;
 				size_t key_len = (size_t) (sep - *args);
+				if (key_len > 0 && (*args)[key_len - 1] == '~') {
+					flags |= RULE_COND_REGEX;
+					key_len--;
+				}
+				char key[MAXLEN];
 				if (key_len >= sizeof(key)) {
 					fail(rsp, "rule: Key too long: '%s'.\n", *args);
 					ok = false;
@@ -1013,7 +1026,20 @@ El bucle de la forma nueva:
 				}
 				memcpy(key, *args, key_len);
 				key[key_len] = '\0';
-				const char *value = sep + 1;
+
+				/* A trailing `/i` on the value asks to ignore case. */
+				char value[MAXLEN];
+				if (strlen(sep + 1) >= sizeof(value)) {
+					fail(rsp, "rule: Value too long: '%s'.\n", *args);
+					ok = false;
+					break;
+				}
+				snprintf(value, sizeof(value), "%s", sep + 1);
+				size_t value_len = strlen(value);
+				if (value_len >= 2 && streq(value + value_len - 2, "/i")) {
+					flags |= RULE_COND_ICASE;
+					value[value_len - 2] = '\0';
+				}
 
 				rule_prop_t prop;
 				if (rule_prop_from_key(key, &prop)) {
@@ -1023,7 +1049,7 @@ El bucle de la forma nueva:
 						break;
 					}
 					char err[MAXLEN];
-					if (!rule_cond_compile(&rule->conds[prop], prop, value, err, sizeof(err))) {
+					if (!rule_cond_compile(&rule->conds[prop], prop, value, flags, err, sizeof(err))) {
 						fail(rsp, "rule: %s: %s\n", key, err);
 						ok = false;
 						break;
@@ -1033,6 +1059,11 @@ El bucle de la forma nueva:
 					snprintf(rule->cause + used, sizeof(rule->cause) - used,
 					         "%s%s=%s", used > 0 ? " " : "", key, value);
 				} else if (is_consequence_key(key)) {
+					if (flags != 0) {
+						fail(rsp, "rule: %s: an effect takes no pattern.\n", key);
+						ok = false;
+						break;
+					}
 					for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
 						rule->effect[i] = (*args)[j];
 					}
@@ -1134,7 +1165,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 
 	# A regular expression on the instance: the web app, not the browser.
 	assert_ok "add the web app rule" \
-		$BSPC rule -a 'instance=~^crx_' state=floating
+		$BSPC rule -a 'instance~=^crx_' state=floating
 	./test_window rm-app crx_abcdef >/dev/null 2>&1 &
 	sleep 0.5
 	W=$($BSPC query -N -n focused)
@@ -1147,7 +1178,7 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	assert_eq "the plain browser window does not" "tiled" "$(rule_state "$W")"
 	$BSPC node "$W" -c || true
 	sleep 0.3
-	$BSPC rule -r 'instance=~^crx_' || true
+	$BSPC rule -r 'instance~=^crx_' || true
 
 	# The role.
 	assert_ok "add the role rule" $BSPC rule -a role=pop-up sticky=on
@@ -1370,13 +1401,13 @@ bspc rule -l > /tmp/reglas.antes
 - Las 34 aplicaciones flotantes pasan a una sola regla, generada por el mismo bucle:
 
 ```bash
-IFS='|'; bspc rule -a "class=~^(${FLOATING_APPS[*]})$/i" state=floating focus=on follow=on; unset IFS
+IFS='|'; bspc rule -a "class~=^(${FLOATING_APPS[*]})$/i" state=floating focus=on follow=on; unset IFS
 ```
 
 - Las 13 PWA de Chrome pasan a una regla:
 
 ```bash
-bspc rule -a class=Google-chrome instance=~^crx_ state=floating sticky=on focus=on follow=on center=on
+bspc rule -a class=Google-chrome instance~=^crx_ state=floating sticky=on focus=on follow=on center=on
 ```
 
   y solo las que necesiten un escritorio propio conservan su regla, ahora con condiciones:

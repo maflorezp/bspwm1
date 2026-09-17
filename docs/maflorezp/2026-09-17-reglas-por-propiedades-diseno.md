@@ -9,8 +9,8 @@ mayúsculas exactas:
 
 ```bash
 bspc rule -a class=Pavucontrol/i state=floating sticky=on
-bspc rule -a 'class=~^(eog|feh|ristretto)$/i' state=floating focus=on follow=on
-bspc rule -a class=Google-chrome instance=~^crx_ state=floating sticky=on center=on
+bspc rule -a 'class~=^(eog|feh|ristretto)$/i' state=floating focus=on follow=on
+bspc rule -a class=Google-chrome instance~=^crx_ state=floating sticky=on center=on
 bspc rule -a type=dialog state=floating center=on
 bspc rule -a class=Google-chrome role=pop-up state=floating
 bspc rule -a transient=on state=floating
@@ -78,17 +78,21 @@ Reglas de la forma nueva:
 
 ### Patrones
 
-El valor de `class`, `instance`, `name` y `role` admite tres formas:
+La regex se marca con el **operador**, `~=` en vez de `=`, y las mayúsculas con el sufijo `/i`
+del valor. El valor no se interpreta de ninguna otra forma: puede empezar por `~` sin que eso
+signifique nada.
+
+El valor de `class`, `instance`, `name` y `role` admite cuatro formas:
 
 | Forma | Ejemplo | Significado |
 |---|---|---|
 | Exacta | `class=kitty` | Idéntico, distinguiendo mayúsculas (lo de hoy) |
 | Exacta sin mayúsculas | `class=kitty/i` | Idéntico, sin distinguir mayúsculas |
-| Regex | `class=~^crx_` | Expresión regular POSIX extendida, la de `grep -E` |
-| Regex sin mayúsculas | `class=~^crx_/i` | Igual, sin distinguir mayúsculas |
+| Regex | `class~=^crx_` | Expresión regular POSIX extendida, la de `grep -E` |
+| Regex sin mayúsculas | `class~=^crx_/i` | Igual, sin distinguir mayúsculas |
 
 - El sufijo `/i` solo cuenta **al final del valor**. Para comparar un texto que de verdad termina
-  en `/i`, se usa la forma regex: `name=~/i$`.
+  en `/i`, se usa la forma regex: `name~=/i$`.
 - `*` sigue valiendo como «cualquier cosa», por compatibilidad con la forma antigua.
 - La regex se compila al crear la regla. Si está mal escrita, `bspc rule -a` **falla en ese
   momento**, con el mensaje de `regerror`, y la regla no se da de alta.
@@ -125,7 +129,7 @@ con sus condiciones. Para eso, la regla guarda el texto del patrón además de s
   la va a gestionar**. El título puede cambiar después; eso ya pasa hoy con el tercer campo.
 - Una propiedad que la ventana no declara (por ejemplo, `role` en una ventana sin
   `WM_WINDOW_ROLE`) se trata como cadena vacía: solo coincide con una condición que acepte vacío,
-  como `role=~^$`.
+  como `role~=^$`.
 
 ## Arquitectura
 
@@ -136,7 +140,9 @@ probarlo con pruebas unitarias:
 
 - Un tipo de condición con: la propiedad, la forma de comparar, el texto original del patrón y,
   si hace falta, la regex compilada.
-- Compilar una condición a partir de `clave=valor`, devolviendo el error de `regcomp` si lo hay.
+- Compilar un valor con las marcas que le da quien llama (`RULE_COND_REGEX` y `RULE_COND_ICASE`),
+  devolviendo el error de `regcomp` si lo hay. El módulo **no interpreta el valor**: quién decide
+  las marcas es el parseo del argumento, que ve el operador y el sufijo.
 - Comparar una condición contra un valor de texto.
 - Liberar lo compilado.
 
@@ -151,8 +157,9 @@ rol y si es hija), que el que llama rellena.
   - `apply_rules` construye una vez la estructura de propiedades y la compara con cada regla a
     través del módulo nuevo;
   - `remove_rule` libera las regex compiladas.
-- **`src/messages.c`:** `cmd_rule` distingue la forma nueva de la antigua, valida las claves y da
-  de alta la regla.
+- **`src/messages.c`:** `cmd_rule` distingue la forma nueva de la antigua, separa la propiedad,
+  el operador (`=` o `~=`) y el valor, quita el sufijo `/i`, valida las claves y da de alta la
+  regla. La forma antigua compila sin ninguna marca, así que se compara literal.
 - **`src/query.c`:** la impresión de `rule -l`.
 - **`src/tree.c`:** `node_ignores_tile_limits` deja de repetir la comparación y usa el módulo.
 - **Backend:** una función nueva para leer `WM_WINDOW_ROLE`, con implementación en
@@ -166,7 +173,7 @@ rol y si es hija), que el que llama rellena.
    - regex inválida: error al compilar;
    - `*` y condición ausente;
    - propiedad vacía (`role` sin declarar);
-   - el caso real: `instance=~^crx_` coincide con `crx_abc` y **no** con la ventana normal de
+   - el caso real: `instance~=^crx_` coincide con `crx_abc` y **no** con la ventana normal de
      Chrome.
 2. **De la interfaz** (`tests/headless/rule_match.sh`):
    - alta con la forma antigua y con la nueva; `rule -l` devuelve cada una tal cual;
@@ -182,7 +189,7 @@ Va **después** de instalar y comprobar que su `bspwm_rules.sh` actual sigue fun
 tocarlo.
 
 - Las 34 aplicaciones flotantes pasan a una regla con alternancia, generada por el mismo bucle.
-- Las 13 PWA de Chrome pasan a una regla con `instance=~^crx_`, y solo las que necesiten un
+- Las 13 PWA de Chrome pasan a una regla con `instance~=^crx_`, y solo las que necesiten un
   escritorio propio conservan la suya.
 - Los cuatro grupos de escritorio (`data`, `code`, `work`, `communication`) pasan a una regla
   cada uno.
@@ -216,8 +223,8 @@ tocarlo.
 
 1. `bspc rule -a class=Pavucontrol/i state=floating` coincide con una ventana cuya clase es
    `pavucontrol`.
-2. `bspc rule -a 'class=~^(eog|feh)$' state=floating` coincide con las dos clases y no con otras.
-3. `bspc rule -a class=Google-chrome instance=~^crx_ …` coincide con las PWA y no con la ventana
+2. `bspc rule -a 'class~=^(eog|feh)$' state=floating` coincide con las dos clases y no con otras.
+3. `bspc rule -a class=Google-chrome instance~=^crx_ …` coincide con las PWA y no con la ventana
    normal de Chrome.
 4. `bspc rule -a type=dialog state=floating center=on` coincide con una ventana que declara
    `_NET_WM_WINDOW_TYPE_DIALOG`.
