@@ -428,6 +428,8 @@ done
 
 . ./headless/automatic_selector.sh
 
+. ./headless/rule_match.sh
+
 # ---- Quit ----
 
 echo ""

@@ -334,6 +334,32 @@ bool backend_get_window_name(bspwm_wid_t win, char *name, size_t len)
 	return true;
 }
 
+bool backend_get_window_role(bspwm_wid_t win, char *role, size_t len)
+{
+	if (role == NULL || len == 0) {
+		return false;
+	}
+	role[0] = '\0';
+	xcb_atom_t atom;
+	get_atom("WM_WINDOW_ROLE", &atom);
+	if (atom == XCB_ATOM_NONE) {
+		return false;
+	}
+	xcb_get_property_reply_t *reply = xcb_get_property_reply(dpy,
+		xcb_get_property(dpy, 0, win, atom, XCB_ATOM_STRING, 0, (uint32_t) len), NULL);
+	if (reply == NULL) {
+		return false;
+	}
+	int value_len = xcb_get_property_value_length(reply);
+	if (value_len > 0) {
+		size_t safe_len = (size_t) value_len < len - 1 ? (size_t) value_len : len - 1;
+		memcpy(role, xcb_get_property_value(reply), safe_len);
+		role[safe_len] = '\0';
+	}
+	free(reply);
+	return role[0] != '\0';
+}
+
 bool backend_get_icccm_props(bspwm_wid_t win, bspwm_icccm_props_t *props)
 {
 	/* Pipeline: send both requests first */

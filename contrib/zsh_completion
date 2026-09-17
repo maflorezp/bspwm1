@@ -280,18 +280,29 @@ _bspc() {
 						done
 					;;
 				(add*)
-					_values -w 'add rule' {border,focus,follow,manage,center}': :(on off)'\
-						'(--one-shot)-o'\
-						'(-o)--one-shot'\
-						'monitor: :_bspc_selector -- monitor'\
-						'desktop: :_bspc_selector -- desktop'\
-						'node: :_bspc_selector -- node'\
-						'rectangle: :( )'\
-						'split_ratio:split ratio:( )'\
-						"split_dir:split direction:(${dir})"\
-						"state:state:(${node_state})"\
-						"${flag[@]:#urgent}:set flag:(on off)"\
+					local -a add_values=(
+						{border,focus,follow,manage,center}': :(on off)'
+						'(--one-shot)-o'
+						'(-o)--one-shot'
+						'monitor: :_bspc_selector -- monitor'
+						'desktop: :_bspc_selector -- desktop'
+						'node: :_bspc_selector -- node'
+						'rectangle: :( )'
+						'split_ratio:split ratio:( )'
+						"split_dir:split direction:(${dir})"
+						"state:state:(${node_state})"
+						"${flag[@]:#urgent}:set flag:(on off)"
 						"layer:layer:(${layer})"
+					)
+					# The condition keys only make sense for the new form: the old
+					# CLASS:INSTANCE:NAME pattern only takes consequences, and a
+					# `class=` there would be refused as an unknown key.
+					[[ "$words[1]" == *=* ]] && add_values+=(
+						{class,instance,name,role}': :( )'
+						"type: :(normal dock desktop notification dialog utility toolbar)"
+						'transient: :(on off)'
+					)
+					_values -w 'add rule' "${add_values[@]}"
 					return
 					;;
 				(remove*)

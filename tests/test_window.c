@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -76,6 +77,9 @@ int main(int argc, char **argv)
 	char *wm_class = TEST_WINDOW_IC;
 	size_t wm_class_len = sizeof (TEST_WINDOW_IC);
 	bool will_free_wm_class = false;
+	char *role = NULL;
+	char *win_type = NULL;
+	bool transient = false;
 
 	// test instance-name class-name
 	if (argc > 2) {
@@ -90,6 +94,19 @@ int main(int argc, char **argv)
 
 		memcpy(wm_class, argv[1], len1 + 1);
 		memcpy(wm_class + len1 + 1, argv[2], len2 + 1);
+	}
+
+	/* Optional properties, read after the two positional arguments. bspwm
+	 * reads all three when it manages the window, so they are set before it
+	 * is mapped, below. */
+	for (int i = 3; i < argc; i++) {
+		if (strcmp(argv[i], "--role") == 0 && i + 1 < argc) {
+			role = argv[++i];
+		} else if (strcmp(argv[i], "--type") == 0 && i + 1 < argc) {
+			win_type = argv[++i];
+		} else if (strcmp(argv[i], "--transient") == 0) {
+			transient = true;
+		}
 	}
 
 	xcb_connection_t *dpy = xcb_connect(NULL, NULL);
@@ -116,6 +133,38 @@ int main(int argc, char **argv)
 	xcb_create_window(dpy, XCB_COPY_FROM_PARENT, win, screen->root, 0, 0, 320, 240, 2,
 	                  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, mask, values);
 	xcb_icccm_set_wm_class(dpy, win, wm_class_len, wm_class);
+
+	/* WM_WINDOW_ROLE, _NET_WM_WINDOW_TYPE and WM_TRANSIENT_FOR, all set
+	 * before mapping: bspwm reads them while managing the window, not after. */
+	if (role != NULL) {
+		xcb_atom_t role_atom;
+		if (get_atom(dpy, "WM_WINDOW_ROLE", &role_atom)) {
+			xcb_change_property(dpy, XCB_PROP_MODE_REPLACE, win, role_atom,
+			                    XCB_ATOM_STRING, 8, strlen(role), role);
+		}
+	}
+
+	if (win_type != NULL) {
+		char type_suffix[64];
+		size_t i;
+		for (i = 0; win_type[i] != '\0' && i + 1 < sizeof(type_suffix); i++) {
+			type_suffix[i] = (char) toupper((unsigned char) win_type[i]);
+		}
+		type_suffix[i] = '\0';
+		char type_atom_name[96];
+		snprintf(type_atom_name, sizeof(type_atom_name), "_NET_WM_WINDOW_TYPE_%s", type_suffix);
+		xcb_atom_t net_wm_window_type, type_atom;
+		if (get_atom(dpy, "_NET_WM_WINDOW_TYPE", &net_wm_window_type) &&
+		    get_atom(dpy, type_atom_name, &type_atom)) {
+			xcb_change_property(dpy, XCB_PROP_MODE_REPLACE, win, net_wm_window_type,
+			                    XCB_ATOM_ATOM, 32, 1, &type_atom);
+		}
+	}
+
+	if (transient) {
+		xcb_icccm_set_wm_transient_for(dpy, win, screen->root);
+	}
+
 	xcb_map_window(dpy, win);
 	xcb_flush(dpy);
 	xcb_generic_event_t *evt;

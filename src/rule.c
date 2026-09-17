@@ -46,7 +46,7 @@ rule_t *make_rule(void)
 	if (r == NULL) {
 		return NULL;
 	}
-	r->class_name[0] = r->instance_name[0] = r->name[0] = r->effect[0] = '\0';
+	r->cause[0] = r->effect[0] = '\0';
 	r->next = r->prev = NULL;
 	r->one_shot = false;
 	return r;
@@ -81,6 +81,9 @@ void remove_rule(rule_t *r)
 	}
 	if (r == rule_tail) {
 		rule_tail = prev;
+	}
+	for (int i = 0; i < RULE_PROP_COUNT; i++) {
+		rule_cond_free(&r->conds[i]);
 	}
 	free(r);
 }
@@ -119,9 +122,9 @@ void remove_rule_by_cause(char *cause)
 
     while (r != NULL) {
 	    rule_t *next = r->next;
-	    if ((class_name != NULL && (streq(class_name, MATCH_ANY) || streq(r->class_name, class_name))) &&
-			    (instance_name == NULL || streq(instance_name, MATCH_ANY) || streq(r->instance_name, instance_name)) &&
-			    (name == NULL || streq(name, MATCH_ANY) || streq(r->name, name))) {
+	    if ((streq(class_name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_CLASS]), class_name)) &&
+	        (streq(instance_name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_INSTANCE]), instance_name)) &&
+	        (streq(name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_NAME]), name))) {
 		    remove_rule(r);
 	    }
 	    r = next;
@@ -280,12 +283,8 @@ event_queue_t *make_event_queue(void *evt)
 		*(csq->layer) = (val); \
 	} while (0)
 
-void _apply_window_type(bspwm_wid_t win, rule_consequence_t *csq)
+void _apply_window_type(bspwm_wid_t win, bspwm_window_type_t type, rule_consequence_t *csq)
 {
-	bspwm_window_type_t type;
-	if (!backend_get_window_type(win, &type))
-		return;
-
 	switch (type) {
 		case BSP_WINDOW_TYPE_TOOLBAR:
 		case BSP_WINDOW_TYPE_UTILITY:
@@ -333,10 +332,9 @@ void _apply_window_state(bspwm_wid_t win, rule_consequence_t *csq)
 #endif
 }
 
-void _apply_transient(bspwm_wid_t win, rule_consequence_t *csq)
+void _apply_transient(bspwm_wid_t transient_for, rule_consequence_t *csq)
 {
-	bspwm_wid_t transient_for = BSPWM_WID_NONE;
-	if (backend_get_transient_for(win, &transient_for) && transient_for != BSPWM_WID_NONE) {
+	if (transient_for != BSPWM_WID_NONE) {
 		SET_CSQ_STATE(STATE_FLOATING);
 	}
 }
@@ -393,22 +391,72 @@ void parse_keys_values(char *buf, rule_consequence_t *csq)
 }
 
 
+/* Everything a rule can match against, read once per window. */
+typedef struct {
+	char class_name[MAXLEN];
+	char instance_name[MAXLEN];
+	char name[MAXLEN];
+	char role[MAXLEN];
+	const char *type;
+	const char *transient;
+} window_props_t;
+
+static const char *window_type_name(bspwm_window_type_t type)
+{
+	switch (type) {
+		case BSP_WINDOW_TYPE_DOCK: return "dock";
+		case BSP_WINDOW_TYPE_DESKTOP: return "desktop";
+		case BSP_WINDOW_TYPE_NOTIFICATION: return "notification";
+		case BSP_WINDOW_TYPE_DIALOG: return "dialog";
+		case BSP_WINDOW_TYPE_UTILITY: return "utility";
+		case BSP_WINDOW_TYPE_TOOLBAR: return "toolbar";
+		default: return "normal";
+	}
+}
+
+/* Fill `props` from what the rules already read plus the role. */
+static void collect_window_props(bspwm_wid_t win, rule_consequence_t *csq,
+                                 bspwm_window_type_t type, bspwm_wid_t transient_for,
+                                 window_props_t *props)
+{
+	snprintf(props->class_name, sizeof(props->class_name), "%s", csq->class_name);
+	snprintf(props->instance_name, sizeof(props->instance_name), "%s", csq->instance_name);
+	snprintf(props->name, sizeof(props->name), "%s", csq->name);
+	props->role[0] = '\0';
+	backend_get_window_role(win, props->role, sizeof(props->role));
+	props->type = window_type_name(type);
+	props->transient = (transient_for != BSPWM_WID_NONE) ? "on" : "off";
+}
+
 void apply_rules(bspwm_wid_t win, rule_consequence_t *csq)
 {
 	/* Query window properties via backend */
-	_apply_window_type(win, csq);
+	bspwm_window_type_t type = BSP_WINDOW_TYPE_NORMAL;
+	if (!backend_get_window_type(win, &type)) {
+		type = BSP_WINDOW_TYPE_NORMAL;
+	}
+	bspwm_wid_t transient_for = BSPWM_WID_NONE;
+	backend_get_transient_for(win, &transient_for);
+
+	_apply_window_type(win, type, csq);
 	_apply_window_state(win, csq);
-	_apply_transient(win, csq);
+	_apply_transient(transient_for, csq);
 	_apply_hints(win, csq);
 	_apply_class(win, csq);
 	_apply_name(win, csq);
 
+	window_props_t props;
+	collect_window_props(win, csq, type, transient_for, &props);
+
+	const char *values[RULE_PROP_COUNT] = {
+		props.class_name, props.instance_name, props.name,
+		props.type, props.role, props.transient,
+	};
+
 	rule_t *rule = rule_head;
 	while (rule != NULL) {
 		rule_t *next = rule->next;
-		if ((streq(rule->class_name, MATCH_ANY) || streq(rule->class_name, csq->class_name)) &&
-		    (streq(rule->instance_name, MATCH_ANY) || streq(rule->instance_name, csq->instance_name)) &&
-		    (streq(rule->name, MATCH_ANY) || streq(rule->name, csq->name))) {
+		if (rule_conds_match(rule->conds, values)) {
 			char effect[MAXLEN];
 			snprintf(effect, sizeof(effect), "%s", rule->effect);
 			parse_keys_values(effect, csq);
@@ -546,6 +594,6 @@ void parse_key_value(char *key, char *value, rule_consequence_t *csq)
 void list_rules(FILE *rsp)
 {
 	for (rule_t *r = rule_head; r != NULL; r = r->next) {
-		fprintf(rsp, "%s:%s:%s %c> %s\n", r->class_name, r->instance_name, r->name, r->one_shot?'-':'=', r->effect);
+		fprintf(rsp, "%s %c> %s\n", r->cause, r->one_shot?'-':'=', r->effect);
 	}
 }
