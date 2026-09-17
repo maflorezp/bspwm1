@@ -129,8 +129,10 @@ bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
 		int regex_flags = REG_EXTENDED | REG_NOSUB | (cond->ignore_case ? REG_ICASE : 0);
 		int status = regcomp(&cond->preg, cond->text, regex_flags);
 		if (status != 0) {
+			/* POSIX leaves `preg` undefined when regcomp() fails, so
+			 * there is nothing to regfree(); `used` stays false, and
+			 * rule_cond_free() will not try either. */
 			regerror(status, &cond->preg, err, len);
-			regfree(&cond->preg);
 			return false;
 		}
 	}

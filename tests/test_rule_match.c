@@ -141,6 +141,10 @@ int main(void)
 	check("an unbalanced regex does not compile", false,
 	      rule_cond_compile(&cond, RULE_PROP_CLASS, "^(eog", RULE_COND_REGEX, err, sizeof(err)));
 	check("and the error says something", true, err[0] != '\0');
+	/* After a failed regcomp() the regex_t is undefined: the condition must
+	 * not claim to hold one, so rule_cond_free() leaves it alone. */
+	check("a condition that failed to compile is not in use", false, cond.used);
+	rule_cond_free(&cond);
 
 	/* The pattern is kept as it was written, and printing puts the
 	 * operator and the /i back the new-syntax way. */
