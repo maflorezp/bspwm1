@@ -260,8 +260,31 @@ _bspc() {
 				{-r,--remove}'[Remove the given rules]:*: :->remove'\
 				'(-l --list)'{-l,--list}'[List the rules]'
 			compset -N "-([ar]|-add|-remove)"
-			case $state$CURRENT in
+			# `-o` may come before the rule itself: count the rule's own
+			# arguments from the first word that is not an option.
+			local rule_arg=$CURRENT word
+			if [[ $state == add ]] ;then
+				for word in "${(@)words[1,CURRENT-1]}" ;do
+					[[ $word == (-o|--one-shot) ]] || break
+					rule_arg=$((rule_arg - 1))
+				done
+			fi
+			local first_word=${words[CURRENT-rule_arg+1]}
+			local -a condition_values=(
+				{class,instance,name,role}': :( )'
+				"type: :(normal dock desktop notification dialog utility toolbar)"
+				'transient: :(on off)'
+			)
+			case $state$rule_arg in
 				(add1)
+					# The first argument is either an old CLASS:INSTANCE:NAME
+					# pattern or the first condition of the new form: offer
+					# both until the word itself says which one it is.
+					if [[ "$PREFIX" != *:* ]] ;then
+						_values -w 'rule condition' '(--one-shot)-o' '(-o)--one-shot' \
+							"${condition_values[@]}"
+						[[ "$PREFIX" == [a-z_]##(|\~)=* ]] && return
+					fi
 					compset -P '*:'
 					bspc query -N -n '.window' 2> /dev/null |
 						while read id ; do
@@ -293,15 +316,15 @@ _bspc() {
 						"state:state:(${node_state})"
 						"${flag[@]:#urgent}:set flag:(on off)"
 						"layer:layer:(${layer})"
+						'honor_size_hints: :(on off tiled floating)'
+						'ignore_tile_limits: :(on off)'
 					)
 					# The condition keys only make sense for the new form: the old
 					# CLASS:INSTANCE:NAME pattern only takes consequences, and a
-					# `class=` there would be refused as an unknown key.
-					[[ "$words[1]" == *=* ]] && add_values+=(
-						{class,instance,name,role}': :( )'
-						"type: :(normal dock desktop notification dialog utility toolbar)"
-						'transient: :(on off)'
-					)
+					# `class=` there would be refused as an unknown key. The form
+					# is told by the rule's first argument, the way bspwm tells it.
+					[[ "$first_word" == [a-z_]##(|\~)=* ]] &&
+						add_values+=("${condition_values[@]}")
 					_values -w 'add rule' "${add_values[@]}"
 					return
 					;;
