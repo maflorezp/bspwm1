@@ -96,9 +96,9 @@ int main(int argc, char **argv)
 		memcpy(wm_class + len1 + 1, argv[2], len2 + 1);
 	}
 
-	// Optional properties, read after the two positional arguments. bspwm
-	// reads all three when it manages the window, so they are set before it
-	// is mapped, below.
+	/* Optional properties, read after the two positional arguments. bspwm
+	 * reads all three when it manages the window, so they are set before it
+	 * is mapped, below. */
 	for (int i = 3; i < argc; i++) {
 		if (strcmp(argv[i], "--role") == 0 && i + 1 < argc) {
 			role = argv[++i];
@@ -134,8 +134,8 @@ int main(int argc, char **argv)
 	                  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, mask, values);
 	xcb_icccm_set_wm_class(dpy, win, wm_class_len, wm_class);
 
-	// WM_WINDOW_ROLE, _NET_WM_WINDOW_TYPE and WM_TRANSIENT_FOR, all set
-	// before mapping: bspwm reads them while managing the window, not after.
+	/* WM_WINDOW_ROLE, _NET_WM_WINDOW_TYPE and WM_TRANSIENT_FOR, all set
+	 * before mapping: bspwm reads them while managing the window, not after. */
 	if (role != NULL) {
 		xcb_atom_t role_atom;
 		if (get_atom(dpy, "WM_WINDOW_ROLE", &role_atom)) {

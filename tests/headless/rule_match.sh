@@ -166,6 +166,25 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	sleep 0.3
 	$BSPC rule -r tail || true
 
+	# Criterion 3 of the design: class AND instance together, the real-world
+	# case. class=Google-chrome alone would also match the plain browser
+	# window below; only the pair of conditions tells the PWA apart from it.
+	assert_ok "add the two-condition Chrome PWA rule" \
+		$BSPC rule -a class=Google-chrome 'instance~=^crx_' state=floating
+	./test_window crx_abcdef Google-chrome >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "the PWA matches both conditions" "floating" "$(rule_state "$W")"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	./test_window google-chrome Google-chrome >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "the plain browser window, same class, does not" "tiled" "$(rule_state "$W")"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+
 	# The role.
 	assert_ok "add the role rule" $BSPC rule -a role=pop-up sticky=on
 	./test_window rm-role RmRole --role pop-up >/dev/null 2>&1 &
