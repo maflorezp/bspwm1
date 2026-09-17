@@ -280,12 +280,8 @@ event_queue_t *make_event_queue(void *evt)
 		*(csq->layer) = (val); \
 	} while (0)
 
-void _apply_window_type(bspwm_wid_t win, rule_consequence_t *csq)
+void _apply_window_type(bspwm_wid_t win, bspwm_window_type_t type, rule_consequence_t *csq)
 {
-	bspwm_window_type_t type;
-	if (!backend_get_window_type(win, &type))
-		return;
-
 	switch (type) {
 		case BSP_WINDOW_TYPE_TOOLBAR:
 		case BSP_WINDOW_TYPE_UTILITY:
@@ -333,10 +329,9 @@ void _apply_window_state(bspwm_wid_t win, rule_consequence_t *csq)
 #endif
 }
 
-void _apply_transient(bspwm_wid_t win, rule_consequence_t *csq)
+void _apply_transient(bspwm_wid_t transient_for, rule_consequence_t *csq)
 {
-	bspwm_wid_t transient_for = BSPWM_WID_NONE;
-	if (backend_get_transient_for(win, &transient_for) && transient_for != BSPWM_WID_NONE) {
+	if (transient_for != BSPWM_WID_NONE) {
 		SET_CSQ_STATE(STATE_FLOATING);
 	}
 }
@@ -393,15 +388,64 @@ void parse_keys_values(char *buf, rule_consequence_t *csq)
 }
 
 
+/* Everything a rule can match against, read once per window. */
+typedef struct {
+	char class_name[MAXLEN];
+	char instance_name[MAXLEN];
+	char name[MAXLEN];
+	char role[MAXLEN];
+	const char *type;
+	const char *transient;
+} window_props_t;
+
+static const char *window_type_name(bspwm_window_type_t type)
+{
+	switch (type) {
+		case BSP_WINDOW_TYPE_DOCK: return "dock";
+		case BSP_WINDOW_TYPE_DESKTOP: return "desktop";
+		case BSP_WINDOW_TYPE_NOTIFICATION: return "notification";
+		case BSP_WINDOW_TYPE_DIALOG: return "dialog";
+		case BSP_WINDOW_TYPE_UTILITY: return "utility";
+		case BSP_WINDOW_TYPE_TOOLBAR: return "toolbar";
+		default: return "normal";
+	}
+}
+
+/* Fill `props` from what the rules already read plus the role. */
+static void collect_window_props(bspwm_wid_t win, rule_consequence_t *csq,
+                                 bspwm_window_type_t type, bspwm_wid_t transient_for,
+                                 window_props_t *props)
+{
+	snprintf(props->class_name, sizeof(props->class_name), "%s", csq->class_name);
+	snprintf(props->instance_name, sizeof(props->instance_name), "%s", csq->instance_name);
+	snprintf(props->name, sizeof(props->name), "%s", csq->name);
+	props->role[0] = '\0';
+	backend_get_window_role(win, props->role, sizeof(props->role));
+	props->type = window_type_name(type);
+	props->transient = (transient_for != BSPWM_WID_NONE) ? "on" : "off";
+}
+
 void apply_rules(bspwm_wid_t win, rule_consequence_t *csq)
 {
 	/* Query window properties via backend */
-	_apply_window_type(win, csq);
+	bspwm_window_type_t type = BSP_WINDOW_TYPE_NORMAL;
+	if (!backend_get_window_type(win, &type)) {
+		type = BSP_WINDOW_TYPE_NORMAL;
+	}
+	bspwm_wid_t transient_for = BSPWM_WID_NONE;
+	backend_get_transient_for(win, &transient_for);
+
+	_apply_window_type(win, type, csq);
 	_apply_window_state(win, csq);
-	_apply_transient(win, csq);
+	_apply_transient(transient_for, csq);
 	_apply_hints(win, csq);
 	_apply_class(win, csq);
 	_apply_name(win, csq);
+
+	window_props_t props;
+	collect_window_props(win, csq, type, transient_for, &props);
+	/* Used by the rule loop in the next commit. */
+	(void) props;
 
 	rule_t *rule = rule_head;
 	while (rule != NULL) {
