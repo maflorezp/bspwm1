@@ -1253,12 +1253,23 @@ void cmd_rule(char **args, int num, FILE *rsp)
 
 	while (num > 0) {
 		if (streq("-a", *args) || streq("--add", *args)) {
+			const char *command = *args;
 			num--, args++;
+			/* The options may come before the rule itself, and in the
+			 * new form, which has no positional pattern, that is where
+			 * they are naturally written. Read them before the form is
+			 * decided, or `-o` would be taken for an old-form pattern. */
+			bool one_shot = false;
+			while (num > 0 && (streq("-o", *args) || streq("--one-shot", *args))) {
+				one_shot = true;
+				num--, args++;
+			}
 			if (num < 2) {
-				fail(rsp, "rule %s: Not enough arguments.\n", *(args - 1));
+				fail(rsp, "rule %s: Not enough arguments.\n", command);
 				return;
 			}
 			rule_t *rule = make_rule();
+			rule->one_shot = one_shot;
 
 			/* The new form is a list of `property=pattern` conditions
 			 * mixed with the consequences, the old one a single

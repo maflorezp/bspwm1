@@ -62,6 +62,23 @@ assert_eq "and it is listed as a condition" "1" \
 	"$(printf '%s\n' "$RULES_NEW_EQ" | grep -c '^name=vim = notes =>')"
 drop_tail "the condition with an = in its pattern is removed"
 
+# The new form has no positional pattern, so writing the options first is
+# the natural thing to do; they have to be read as options and not as the
+# pattern of a rule that does not have one.
+assert_ok "the one-shot flag may come before the conditions" \
+	$BSPC rule -a -o class=kitty state=floating
+RULES_OS=$($BSPC rule -l)
+assert_eq "and the rule is listed as one-shot" "1" \
+	"$(printf '%s\n' "$RULES_OS" | grep -c '^class=kitty -> state=floating$')"
+drop_tail "the one-shot rule written flag first is removed"
+
+assert_ok "the long one-shot flag may come before the pattern too" \
+	$BSPC rule -a --one-shot kitty state=floating
+RULES_OS2=$($BSPC rule -l)
+assert_eq "and the old-form rule is listed as one-shot" "1" \
+	"$(printf '%s\n' "$RULES_OS2" | grep -c '^kitty:\*:\* -> state=floating$')"
+drop_tail "the old-form one-shot rule written flag first is removed"
+
 # The new form: conditions with a name, mixed in with the consequences.
 # Chromium stays on the list, unremoved, all the way past the reject block
 # below: two checks need it still there, and BEFORE needs a real rule to
