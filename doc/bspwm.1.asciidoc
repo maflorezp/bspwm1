@@ -641,9 +641,37 @@ rule 'COMMANDS'
 Commands
 ^^^^^^^^
 
-*-a*, *--add* (<class_name>|\*)[:(<instance_name>|\*)[:(<name>|\*)]] [*-o*|*--one-shot*] [monitor=MONITOR_SEL|desktop=DESKTOP_SEL|node=NODE_SEL] [state=STATE] [layer=LAYER] [honor_size_hints=(true|false|tiled|floating)] [split_dir=DIR] [split_ratio=RATIO] [(hidden|sticky|private|locked|marked|center|follow|manage|focus|border)=(on|off)] [rectangle=WxH+X+Y]::
+*-a*, *--add* (<class_name>|\*)[:(<instance_name>|\*)[:(<name>|\*)]]|(<property>[~]=<pattern>)... [*-o*|*--one-shot*] <effect>...::
 	Create a new rule. Colons in the 'instance_name', 'class_name', or 'name'
 	fields can be escaped with a backslash.
+
+A rule is given either as the pattern above or as a list of conditions, each one
+'<property>=<pattern>' or '<property>~=<pattern>'. The properties are 'class',
+'instance', 'name' (the title), 'type', 'role' (*WM_WINDOW_ROLE*) and 'transient'
+(*on* when the window is a child of another one). A window matches the rule when
+every condition holds.
+
+With '=' the pattern is compared as written; with '~=' it is a POSIX extended
+regular expression. A pattern ending in '/i' is compared ignoring case, so
+'class~=^crx_/i' is both. The properties 'type' and 'transient' take no regular
+expression: 'type' is one of *normal*, *dock*, *desktop*, *notification*, *dialog*,
+*utility* or *toolbar*, and 'transient' is a boolean.
+
+A rule is refused when a pattern is not a valid regular expression, a condition is
+repeated, or a key is neither a property nor an effect.
+
+Only rules that look at 'class' and 'instance' carry 'ignore_tile_limits': the other
+properties are not known yet when a window is inserted.
+
+----
+bspc rule -a class=Pavucontrol/i state=floating
+bspc rule -a 'class~=^(eog|feh|ristretto)$' state=floating focus=on
+bspc rule -a class=Google-chrome instance~=^crx_ state=floating center=on
+bspc rule -a type=dialog state=floating center=on
+bspc rule -a class=Google-chrome role=pop-up state=floating
+bspc rule -a transient=on state=floating
+bspc rule -a Google-chrome:crx_abcdef desktop=work follow=on
+----
 
 *-r*, *--remove* ^<n>|head|tail|(<class_name>|\*)[:(<instance_name>|\*)[:(<name>|*)]]...::
 	Remove the given rules.

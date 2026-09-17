@@ -291,7 +291,10 @@ _bspc() {
 						"split_dir:split direction:(${dir})"\
 						"state:state:(${node_state})"\
 						"${flag[@]:#urgent}:set flag:(on off)"\
-						"layer:layer:(${layer})"
+						"layer:layer:(${layer})"\
+						{class,instance,name,role}': :( )'\
+						"type: :(normal dock desktop notification dialog utility toolbar)"\
+						'transient: :(on off)'
 					return
 					;;
 				(remove*)
