@@ -2,12 +2,12 @@
 .\"     Title: bspwm
 .\"    Author: [see the "Author" section]
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: 08/24/2026
+.\"      Date: 09/17/2026
 .\"    Manual: Bspwm Manual
-.\"    Source: Bspwm v1.4.0-9-gb25f2ac
+.\"    Source: Bspwm v1.6.2
 .\"  Language: English
 .\"
-.TH "BSPWM" "1" "08/24/2026" "Bspwm v1\&.4\&.0\-9\-gb25f2ac" "Bspwm Manual"
+.TH "BSPWM" "1" "09/17/2026" "Bspwm v1\&.6\&.2" "Bspwm Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -1503,7 +1503,8 @@ Ignore strut hinting from clients requesting to reserve space (i\&.e\&. task bar
 Let clients start a move or a resize of their own window with
 \fB_NET_WM_MOVERESIZE\fR, as applications that draw their own title bar do\&. When
 \fBfalse\fR,
-\fB_NET_WM_MOVERESIZE\fR is not advertised, so those clients move and resize their windows themselves\&. Some clients, GTK among them, read the advertised list only once, so a change only reaches the windows they open afterwards\&. Defaults to
+\fB_NET_WM_MOVERESIZE\fR
+is not advertised, so those clients move and resize their windows themselves\&. Some clients, GTK among them, read the advertised list only once, so a change only reaches the windows they open afterwards\&. Defaults to
 \fBtrue\fR\&.
 .RE
 .PP
