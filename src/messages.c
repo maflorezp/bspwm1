@@ -1359,6 +1359,20 @@ void cmd_rule(char **args, int num, FILE *rsp)
 							effect_ok = false;
 							break;
 						}
+						/* The old form has no `~=` operator at all, but a
+						 * value ending in `/i` would still be silently
+						 * dropped by parse_key_value(), leaving an inert
+						 * rule the same way an unmarked consequence in the
+						 * new form would. */
+						if (sep != NULL) {
+							const char *value = sep + 1;
+							size_t vlen = strlen(value);
+							if (vlen >= 2 && streq(value + vlen - 2, "/i")) {
+								fail(rsp, "rule: %s: A consequence can't take a case marker.\n", key);
+								effect_ok = false;
+								break;
+							}
+						}
 						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
 							rule->effect[i] = (*args)[j];
 						}
@@ -1421,30 +1435,34 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						}
 						/* A trailing `/i` on the value marks
 						 * case-insensitivity; it is not part of the
-						 * pattern itself. Check the length before copying:
-						 * truncating here first would let a value that is
-						 * too long compile into a shorter, different
-						 * pattern instead of being refused, and would hide
-						 * a `/i` that only shows up past the cut. */
+						 * pattern itself, and has to come off *before* the
+						 * length is judged: measuring the value with the
+						 * suffix still attached would refuse a legitimate
+						 * 254- or 255-character pattern for being "256 or
+						 * 257 characters long" once /i is counted in. */
+						size_t vlen = strlen(value);
+						bool ignore_case = (vlen >= 2 && streq(value + vlen - 2, "/i"));
+						size_t plen = ignore_case ? vlen - 2 : vlen;
+
 						char pattern[RULE_PATTERN_MAXLEN];
-						if (strlen(value) >= sizeof(pattern)) {
-							char err[MAXLEN];
-							snprintf(err, sizeof(err), "the pattern is longer than %zu characters",
-							         sizeof(pattern) - 1);
-							fail(rsp, "rule: %s: %s\n", key, err);
-							ok = false;
-							break;
+						const char *to_compile = value;
+						if (plen < sizeof(pattern)) {
+							/* Fits once /i is stripped: this is the actual
+							 * pattern that gets compiled. */
+							snprintf(pattern, sizeof(pattern), "%.*s", (int) plen, value);
+							to_compile = pattern;
 						}
-						snprintf(pattern, sizeof(pattern), "%s", value);
-						size_t plen = strlen(pattern);
-						bool ignore_case = (plen >= 2 && streq(pattern + plen - 2, "/i"));
-						if (ignore_case) {
-							pattern[plen - 2] = '\0';
-						}
+						/* Otherwise even the stripped value would not fit
+						 * `pattern`. Rather than measuring it here too —
+						 * and repeating rule_cond_compile()'s own "too
+						 * long" message — pass `value` through as it is
+						 * (still however long it really is, /i and all)
+						 * and let rule_cond_compile() reject it and report
+						 * the length itself; one place says it, not two. */
 						unsigned int flags = (is_regex ? RULE_COND_REGEX : 0) |
 						                      (ignore_case ? RULE_COND_ICASE : 0);
 						char err[MAXLEN];
-						if (!rule_cond_compile(&rule->conds[prop], prop, pattern, flags, err, sizeof(err))) {
+						if (!rule_cond_compile(&rule->conds[prop], prop, to_compile, flags, err, sizeof(err))) {
 							fail(rsp, "rule: %s: %s\n", key, err);
 							ok = false;
 							break;
