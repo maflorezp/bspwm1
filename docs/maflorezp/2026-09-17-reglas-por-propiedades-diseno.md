@@ -237,3 +237,53 @@ tocarlo.
 9. `bspc rule -l` devuelve cada regla tal como se escribió.
 10. `make` no da avisos y `make test` queda en verde, con las pruebas nuevas incluidas.
 11. La rama `rule-match` sale de `upstream/master` y se sostiene sola como PR.
+
+## Anexo: cierre (2026-09-17)
+
+La rama `rule-match` quedó en `3fb197b` (33 commits sobre `upstream/master`, publicada) y fundida en
+`local` (`be8aa61`, 305/305). El paquete instalado es `1.6.2.r112.gbe8aa61`. La configuración de
+Mauricio ya usa la sintaxis nueva: 95 reglas pasaron a 29 (dotfiles `cbe5414`).
+
+La revisión final de toda la rama dio 0 críticos, 6 importantes y 15 menores. Una ronda arregló los
+6 importantes y 7 menores; la re-revisión la aprobó y dejó 3 menores, también arreglados.
+
+### Decisiones que cambian lo escrito arriba
+
+- **Cómo se elige la forma.** No basta con que el primer argumento lleve un `=`: es forma nueva
+  sólo si lo que precede al primer `=` o `~=` son minúsculas y `_`. Así un patrón antiguo con `=`
+  en el título (`'st:*:vim = notes'`) sigue siendo antiguo, una regla sin condiciones
+  (`state=floating sticky=on`) sigue valiendo y una errata como `clas=kitty` sigue dando error. El
+  precio es que una clase de un solo campo, en minúsculas y con `=` (`foo=bar`), se rechaza; se
+  escribe `class=foo=bar`.
+- **`-o` puede ir delante** de las condiciones.
+- **Una consecuencia de más de 255 caracteres da error** en las dos formas; antes se recortaba sin
+  avisar.
+- **`rule -r` entiende la causa que imprime `rule -l`**, comparándola entera: `class=kitty` no
+  borra `class=kitty instance=term` ni `class=kitty/i`.
+- **El rol sólo se lee si alguna regla lo usa**, y el átomo se interna una vez al arrancar. El
+  riesgo de «coste por ventana» de arriba queda en cero para quien no usa `role`.
+- **`/i` sobre `type` o `transient` da error**, en vez de aceptarse sin efecto.
+- **Una sola lista de claves de consecuencia**, en `rule.c`, que `messages.c` consulta.
+
+### Pendiente antes del PR
+
+- **Descripción del PR.** Contar los cambios de comportamiento: la forma nueva la abre un primer
+  argumento que empieza por `clave=` o `clave~=`; una clave desconocida, una consecuencia
+  demasiado larga o una clase `foo=bar` suelta ahora son errores.
+- **Backend wlroots sin compilar**: faltan `wlroots0.20` y `wlr-protocols`. Sólo se comprobó la
+  sintaxis de `backend_wlr.c`.
+- **Aplazado a una rama propia**, porque no cambia nada observable:
+  - el comentario falso de `messages.c` sobre `desktop=web/i`;
+  - los dos mensajes distintos para una clave demasiado larga;
+  - las dos copias de 256 B por condición en `rule_cond_t` (~3,8 KB por regla);
+  - las copias de más en `window_props_t`;
+  - los cuatro bloques casi iguales de copia de la consecuencia;
+  - `cause[3*MAXLEN]`, que limita reglas válidas por el tamaño de un búfer de impresión;
+  - el `strcmp(text, "*")` en cada comparación;
+  - los detalles de `tests/Makefile`.
+- **Fallos anteriores a la rama**, vistos de paso:
+  - en `contrib/zsh_completion`, `"${flag[@]:#urgent}:set flag:(on off)"` sólo añade la
+    especificación al último elemento;
+  - una clase con `=` escapado (`foo\=bar`) se lista como `foo=bar:*:*`, y eso no se puede volver
+    a dar de alta tal cual (pasa lo mismo con los `:` escapados).
+- **Sin prueba automática del autocompletado.** Se comprobó a mano con `zpty`.
