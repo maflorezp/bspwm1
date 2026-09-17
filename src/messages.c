@@ -1244,16 +1244,19 @@ end:
 	return;
 }
 
-/* The keys a rule consequence accepts, exactly the ones `parse_key_value()`
- * (src/rule.c) understands. `ignore_tile_limits` is deliberately absent:
- * `effect_has()` (src/tree.c) reads it straight out of `rule->effect`
- * instead. */
+/* The keys a rule consequence accepts. Most of them are exactly what
+ * `parse_key_value()` (src/rule.c) understands; `ignore_tile_limits` is the
+ * one exception — `parse_key_value()` never sees it, `effect_has()`
+ * (src/tree.c) reads it straight out of `rule->effect` instead — but it
+ * still has to be accepted here, or a valid consequence would be refused as
+ * an unknown key. */
 static bool is_consequence_key(const char *key)
 {
 	static const char *keys[] = {
 		"monitor", "desktop", "node", "split_dir", "split_ratio", "state", "layer",
 		"honor_size_hints", "rectangle", "hidden", "sticky", "private", "locked",
-		"marked", "center", "follow", "manage", "focus", "border", NULL,
+		"marked", "center", "follow", "manage", "focus", "border",
+		"ignore_tile_limits", NULL,
 	};
 	for (const char **k = keys; *k != NULL; k++) {
 		if (streq(*k, key)) {
@@ -1372,6 +1375,11 @@ void cmd_rule(char **args, int num, FILE *rsp)
 				if (i >= sizeof(rule->effect)) {
 					i = sizeof(rule->effect) - 1;
 				}
+				/* The space added after a consequence anticipates another
+				 * one; drop it when nothing followed (a trailing -o). */
+				if (i > 0 && rule->effect[i - 1] == ' ') {
+					i--;
+				}
 				rule->effect[i] = '\0';
 				add_rule(rule);
 			} else {
@@ -1413,8 +1421,20 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						}
 						/* A trailing `/i` on the value marks
 						 * case-insensitivity; it is not part of the
-						 * pattern itself. */
-						char pattern[MAXLEN];
+						 * pattern itself. Check the length before copying:
+						 * truncating here first would let a value that is
+						 * too long compile into a shorter, different
+						 * pattern instead of being refused, and would hide
+						 * a `/i` that only shows up past the cut. */
+						char pattern[RULE_PATTERN_MAXLEN];
+						if (strlen(value) >= sizeof(pattern)) {
+							char err[MAXLEN];
+							snprintf(err, sizeof(err), "the pattern is longer than %zu characters",
+							         sizeof(pattern) - 1);
+							fail(rsp, "rule: %s: %s\n", key, err);
+							ok = false;
+							break;
+						}
 						snprintf(pattern, sizeof(pattern), "%s", value);
 						size_t plen = strlen(pattern);
 						bool ignore_case = (plen >= 2 && streq(pattern + plen - 2, "/i"));
@@ -1430,17 +1450,45 @@ void cmd_rule(char **args, int num, FILE *rsp)
 							break;
 						}
 						/* Keep the condition, in order, exactly as
-						 * `rule -l` will print it. */
-						char printed[MAXLEN];
+						 * `rule -l` will print it. Sized for the worst
+						 * case: an 8-char property name ("instance"), the
+						 * `~` and `=` operator, a 255-char pattern and the
+						 * `/i` suffix — 267 characters. */
+						char printed[RULE_PATTERN_MAXLEN + 32];
 						rule_cond_print(&rule->conds[prop], prop, printed, sizeof(printed));
 						size_t used = strlen(rule->cause);
+						size_t sep_len = used > 0 ? 1 : 0;
+						if (used + sep_len + strlen(printed) >= sizeof(rule->cause)) {
+							/* It would not fit: fail the rule instead of
+							 * silently listing it as something shorter
+							 * than what was actually compiled. */
+							fail(rsp, "rule: %s: The rule has too many conditions to list.\n", key);
+							ok = false;
+							break;
+						}
+						/* The length check just above already guarantees
+						 * this fits; GCC cannot follow it through the
+						 * runtime offset `used` and, with `printed` wider
+						 * than before, starts flagging this snprintf as a
+						 * truncation risk (the same false positive
+						 * rule_match.c documents around its own bounded
+						 * snprintf calls). */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 						snprintf(rule->cause + used, sizeof(rule->cause) - used,
 						         "%s%s", used > 0 ? " " : "", printed);
-					} else if (is_regex) {
-						fail(rsp, "rule: %s: Not a condition, can't take an operator.\n", key);
-						ok = false;
-						break;
+#pragma GCC diagnostic pop
 					} else if (is_consequence_key(key)) {
+						/* Consequences take neither operator: they are
+						 * always exact and case-sensitive, the way
+						 * parse_key_value() (src/rule.c) reads them. */
+						size_t vlen = strlen(value);
+						bool value_has_icase_marker = (vlen >= 2 && streq(value + vlen - 2, "/i"));
+						if (is_regex || value_has_icase_marker) {
+							fail(rsp, "rule: %s: Not a condition, can't take an operator or a case marker.\n", key);
+							ok = false;
+							break;
+						}
 						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
 							rule->effect[i] = (*args)[j];
 						}
@@ -1448,6 +1496,9 @@ void cmd_rule(char **args, int num, FILE *rsp)
 							rule->effect[i++] = ' ';
 						}
 					} else {
+						/* Neither a condition nor a consequence: blame the
+						 * key itself, even if it was written with `~=` —
+						 * that is a typo, not a misused operator. */
 						fail(rsp, "rule: Unknown key: '%s'.\n", key);
 						ok = false;
 						break;
@@ -1456,6 +1507,12 @@ void cmd_rule(char **args, int num, FILE *rsp)
 				}
 				if (i >= sizeof(rule->effect)) {
 					i = sizeof(rule->effect) - 1;
+				}
+				/* Same as the old form: drop the space anticipating a
+				 * consequence that never came (a condition, or nothing,
+				 * followed the last one instead). */
+				if (i > 0 && rule->effect[i - 1] == ' ') {
+					i--;
 				}
 				rule->effect[i] = '\0';
 				if (!ok) {
