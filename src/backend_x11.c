@@ -926,7 +926,6 @@ void x11_setup_ewmh_supported(void)
 		ewmh->_NET_CLOSE_WINDOW,
 		ewmh->_NET_WM_STRUT_PARTIAL,
 		ewmh->_NET_WM_DESKTOP,
-		ewmh->_NET_WM_MOVERESIZE,
 		ewmh->_NET_WM_STATE,
 		ewmh->_NET_WM_STATE_HIDDEN,
 		ewmh->_NET_WM_STATE_FULLSCREEN,
@@ -940,8 +939,15 @@ void x11_setup_ewmh_supported(void)
 		ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
 		ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
 		ewmh->_NET_WM_WINDOW_TYPE_UTILITY,
-		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR
+		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
+		/* Last, so that it can be left out. */
+		ewmh->_NET_WM_MOVERESIZE
 	};
-	xcb_ewmh_set_supported(ewmh, default_screen,
-		sizeof(net_atoms) / sizeof(net_atoms[0]), net_atoms);
+	uint32_t len = sizeof(net_atoms) / sizeof(net_atoms[0]);
+	/* Toolkits move and resize their windows themselves unless the atom is
+	 * advertised, so it is only advertised while the requests are handled.
+	 * Called again whenever allow_net_wm_moveresize changes. */
+	if (!allow_net_wm_moveresize)
+		len--;
+	xcb_ewmh_set_supported(ewmh, default_screen, len, net_atoms);
 }
