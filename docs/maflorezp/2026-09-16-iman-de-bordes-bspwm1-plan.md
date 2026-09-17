@@ -3319,8 +3319,8 @@ diga que ese subscriber ya no existe: el imán vive dentro de bspwm (paquete
 **Files:**
 - Create (en `local`): `docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md`,
   `docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md`
-- Delete (en `~/.dotFiles`): `docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md`,
-  `docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md`
+- Delete (en `~/.dotFiles`): `docs/superpowers/specs/2026-09-16-iman-de-bordes-bspwm1-diseno.md`,
+  `docs/superpowers/plans/2026-09-16-iman-de-bordes-bspwm1.md`
 - Modify: `~/.dotFiles/pkgbuilds/bspwm1-maflorezp-git/PKGBUILD` (comentario de cabecera)
 
 - [ ] **Step 1: Copiar y publicar**
@@ -3328,9 +3328,9 @@ diga que ese subscriber ya no existe: el imán vive dentro de bspwm (paquete
 ```bash
 cd /websites/personal/bspwm && git switch local
 mkdir -p docs/maflorezp
-cp ~/.dotFiles/docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md docs/maflorezp/
-cp ~/.dotFiles/docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md
-sed -i 's|docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md|docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md|' docs/maflorezp/*.md
+cp ~/.dotFiles/docs/superpowers/specs/2026-09-16-iman-de-bordes-bspwm1-diseno.md docs/maflorezp/
+cp ~/.dotFiles/docs/superpowers/plans/2026-09-16-iman-de-bordes-bspwm1.md docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md
+sed -i 's|docs/superpowers/specs/2026-09-16-iman-de-bordes-bspwm1-diseno.md|docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md|' docs/maflorezp/*.md
 git add docs/maflorezp
 git commit -m "docs: diseño y plan del imán de bordes y del fork"
 git push origin local
@@ -3339,8 +3339,8 @@ git push origin local
 - [ ] **Step 2: Quitar las copias de los dotfiles y actualizar referencias**
 
 ```bash
-command rm -f ~/.dotFiles/docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-diseno.md \
-              ~/.dotFiles/docs/maflorezp/2026-09-16-iman-de-bordes-bspwm1-plan.md
+command rm -f ~/.dotFiles/docs/superpowers/specs/2026-09-16-iman-de-bordes-bspwm1-diseno.md \
+              ~/.dotFiles/docs/superpowers/plans/2026-09-16-iman-de-bordes-bspwm1.md
 ```
 
 En el PKGBUILD, cambia la línea `# Aero Snap y cuatro PRs de bspwm original. …` y las dos
