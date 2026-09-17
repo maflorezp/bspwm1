@@ -64,7 +64,9 @@ bool rule_prop_from_key(const char *key, rule_prop_t *prop);
 const char *rule_prop_name(rule_prop_t prop);
 
 /* Compile `value` into `cond`. On failure it fills `err` with the reason and
- * leaves nothing to free. */
+ * leaves nothing to free. Compiling again over a `cond` that already holds a
+ * compiled condition, without an intervening rule_cond_free(), leaks its
+ * regex, the same caveat regcomp() itself has. */
 bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
                        char *err, size_t len);
 /* Whether `value` satisfies `cond`. An unused condition and the `*` pattern

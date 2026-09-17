@@ -117,6 +117,17 @@ int main(void)
 	check_str("printing gives back the condition", "instance=~^crx_/i", printed);
 	rule_cond_free(&cond);
 
+	/* Recompiling over a `cond` that still holds a regex leaks it: free it
+	 * first. The new condition replaces the old one entirely. */
+	rule_cond_compile(&cond, RULE_PROP_INSTANCE, "~^crx_", err, sizeof(err));
+	rule_cond_free(&cond);
+	rule_cond_compile(&cond, RULE_PROP_INSTANCE, "~^tab_", err, sizeof(err));
+	check("the old pattern no longer matches after recompiling", false,
+	      rule_cond_matches(&cond, "crx_abc"));
+	check("the new pattern matches after recompiling", true,
+	      rule_cond_matches(&cond, "tab_abc"));
+	rule_cond_free(&cond);
+
 	/* A whole rule: every condition has to hold. */
 	rule_cond_t conds[RULE_PROP_COUNT];
 	memset(conds, 0, sizeof(conds));
