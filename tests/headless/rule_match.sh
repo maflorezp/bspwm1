@@ -123,9 +123,6 @@ drop_tail "the case insensitive rule is removed"
 assert_ok "add a rule with a regular expression" \
 	$BSPC rule -a 'class~=^(eog|feh)$' state=floating
 drop_tail "the regular expression rule is removed"
-assert_ok "the /i suffix is taken off the value before validating it" \
-	$BSPC rule -a type=dialog/i center=on
-drop_tail "the rule with a case marker is removed"
 
 # /i has to come off before the length is judged, or a pattern that
 # legitimately fits right up to the edge would be refused for the two
@@ -227,6 +224,10 @@ assert_fail "reject a consequence written with a case marker" \
 	$BSPC rule -a class=kitty state=floating/i
 assert_fail "the old form refuses a consequence with a case marker" \
 	$BSPC rule -a kitty state=floating/i
+# type and transient are compared as written: a case marker on them would
+# do nothing and could not be listed back, so it is refused like `~=` is.
+assert_fail "reject a case marker on the type" $BSPC rule -a type=dialog/i center=on
+assert_fail "reject a case marker on transient" $BSPC rule -a transient=on/i center=on
 
 LONG=$(printf '%0300d' 0 | tr 0 a)
 assert_fail "reject a value longer than the pattern buffer" \

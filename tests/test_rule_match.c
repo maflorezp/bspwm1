@@ -129,6 +129,13 @@ int main(void)
 	rule_cond_free(&cond);
 	check("maybe is not a transient value", false,
 	      rule_cond_compile(&cond, RULE_PROP_TRANSIENT, "maybe", 0, err, sizeof(err)));
+	/* Both are compared as written, so a case marker on them would be
+	 * inert, and `rule -l` could not print it back: it is refused. */
+	check("a case marker is not allowed for the type", false,
+	      rule_cond_compile(&cond, RULE_PROP_TYPE, "dialog", RULE_COND_ICASE, err, sizeof(err)));
+	check("and the error names the property", true, strstr(err, "type") != NULL);
+	check("a case marker is not allowed for transient", false,
+	      rule_cond_compile(&cond, RULE_PROP_TRANSIENT, "on", RULE_COND_ICASE, err, sizeof(err)));
 
 	/* A broken regex is refused, with the reason. */
 	check("an unbalanced regex does not compile", false,

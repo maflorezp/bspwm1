@@ -1122,10 +1122,9 @@ is both\&. The properties
 \fItype\fR
 and
 \fItransient\fR
-take no regular expression, and the
+take neither a regular expression nor the
 \fI/i\fR
-suffix on them is accepted but has no effect: they are always compared as
-written\&.
+suffix: they are always compared as written\&.
 \fItype\fR
 is one of
 \fBnormal\fR,
@@ -1150,7 +1149,9 @@ value is not in its list,
 or
 \fItransient\fR
 is given with
-\fI~=\fR,
+\fI~=\fR
+or
+\fI/i\fR,
 or a key is neither a property nor an effect\&.
 .sp
 Only rules that look at
