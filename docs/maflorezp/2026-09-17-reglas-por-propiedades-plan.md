@@ -1054,10 +1054,11 @@ El bucle de la forma nueva:
 						ok = false;
 						break;
 					}
-					/* Keep the conditions, in order, for `rule -l`. */
+					/* Keep the conditions as they were written, in order,
+					 * for `rule -l`: operator and `/i` included. */
 					size_t used = strlen(rule->cause);
 					snprintf(rule->cause + used, sizeof(rule->cause) - used,
-					         "%s%s=%s", used > 0 ? " " : "", key, value);
+					         "%s%s", used > 0 ? " " : "", *args);
 				} else if (is_consequence_key(key)) {
 					if (flags != 0) {
 						fail(rsp, "rule: %s: an effect takes no pattern.\n", key);
