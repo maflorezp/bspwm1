@@ -37,6 +37,19 @@ $BSPC rule -r tail || true
 assert_ok "the /i suffix is taken off the value before validating it" \
 	$BSPC rule -a type=dialog/i center=on
 $BSPC rule -r tail || true
+
+# /i has to come off before the length is judged, or a pattern that
+# legitimately fits right up to the edge would be refused for the two
+# characters of the suffix that were never really part of it.
+P254=$(printf '%0254d' 0 | tr 0 c)
+assert_ok "a 254-character pattern followed by /i is accepted" \
+	$BSPC rule -a "class=$P254/i" state=floating
+$BSPC rule -r tail || true
+P255=$(printf '%0255d' 0 | tr 0 c)
+assert_ok "a 255-character pattern followed by /i is accepted" \
+	$BSPC rule -a "class=$P255/i" state=floating
+$BSPC rule -r tail || true
+
 assert_ok "add a rule with two conditions" \
 	$BSPC rule -a class=Google-chrome instance~=^crx_ center=on
 
@@ -87,6 +100,19 @@ assert_fail "reject a consequence written with an operator" \
 	$BSPC rule -a class=kitty state~=floating
 assert_fail "reject a consequence written with a case marker" \
 	$BSPC rule -a class=kitty state=floating/i
+assert_fail "the old form refuses a consequence with a case marker" \
+	$BSPC rule -a kitty state=floating/i
+
+LONG=$(printf '%0300d' 0 | tr 0 a)
+assert_fail "reject a value longer than the pattern buffer" \
+	$BSPC rule -a "class=$LONG" state=floating
+assert_fail "a value too long is refused even when it ends in /i" \
+	$BSPC rule -a "class=$LONG/i" state=floating
+
+P250=$(printf '%0250d' 0 | tr 0 b)
+assert_fail "reject a rule whose conditions do not fit the listing" \
+	$BSPC rule -a "class=$P250" "instance=$P250" "name=$P250" state=floating
+
 assert_eq "a refused rule is not added" "$BEFORE" "$($BSPC rule -l | wc -l)"
 
 # Chromium was needed all the way through the block above; drop it now.
