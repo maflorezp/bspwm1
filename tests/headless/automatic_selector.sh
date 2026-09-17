@@ -23,6 +23,11 @@ automatic_new_window() {
 }
 
 if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
+	# The checks below assume that nothing is preselected anywhere.
+	for AUTO_NODE in $($BSPC query -N -n '.!automatic' 2>/dev/null || true); do
+		$BSPC node "$AUTO_NODE" -p cancel || true
+	done
+
 	AUTO_HOME=$($BSPC query -D -d focused 2>/dev/null || true)
 	$BSPC monitor -a auto-one auto-two || true
 	AUTO_ONE=$($BSPC query -D -d auto-one 2>/dev/null || true)
@@ -57,25 +62,30 @@ if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
 	# End to end: an external rule that sends new windows to the newest
 	# preselection must leave a window opened on an empty desktop there.
 	$BSPC node "$AUTO_W" -p cancel || true
-	AUTO_OLD_ERC=$($BSPC config external_rules_command 2>/dev/null || true)
-	AUTO_ERC=$(mktemp)
-	cat > "$AUTO_ERC" <<-EOF
-		#!/bin/sh
-		echo "node=\$('$(cd .. && pwd)/bspc' query -N -n 'newest.!automatic') follow=on"
-	EOF
-	chmod +x "$AUTO_ERC"
-	$BSPC config external_rules_command "$AUTO_ERC" || true
-	$BSPC desktop -f auto-two || true
-	AUTO_BEFORE=$($BSPC query -N -n .window 2>/dev/null || true)
-	./test_window auto-b Autosel >/dev/null 2>&1 &
-	AUTO_X=$(automatic_new_window "$AUTO_BEFORE")
-	sleep 0.3
-	assert_eq "a window opened on an empty desktop stays there" \
-		"$AUTO_TWO" "$($BSPC query -D -n "$AUTO_X" 2>/dev/null || true)"
-	assert_eq "and the focus stays on that desktop" \
-		"$AUTO_TWO" "$($BSPC query -D -d focused 2>/dev/null || true)"
-	$BSPC config external_rules_command "$AUTO_OLD_ERC" || true
-	command rm -f "$AUTO_ERC"
+	AUTO_X=""
+	AUTO_ERC=$(mktemp) || AUTO_ERC=""
+	if [ -n "$AUTO_ERC" ]; then
+		AUTO_OLD_ERC=$($BSPC config external_rules_command 2>/dev/null || true)
+		cat > "$AUTO_ERC" <<-EOF || true
+			#!/bin/sh
+			echo "node=\$('$(cd .. && pwd)/bspc' query -N -n 'newest.!automatic') follow=on"
+		EOF
+		chmod +x "$AUTO_ERC" || true
+		$BSPC config external_rules_command "$AUTO_ERC" || true
+		$BSPC desktop -f auto-two || true
+		AUTO_BEFORE=$($BSPC query -N -n .window 2>/dev/null || true)
+		./test_window auto-b Autosel >/dev/null 2>&1 &
+		AUTO_X=$(automatic_new_window "$AUTO_BEFORE")
+		sleep 0.3
+		assert_eq "a window opened on an empty desktop stays there" \
+			"$AUTO_TWO" "$($BSPC query -D -n "$AUTO_X" 2>/dev/null || true)"
+		assert_eq "and the focus stays on that desktop" \
+			"$AUTO_TWO" "$($BSPC query -D -d focused 2>/dev/null || true)"
+		$BSPC config external_rules_command "$AUTO_OLD_ERC" || true
+		command rm -f "$AUTO_ERC" || true
+	else
+		printf "%b\n" "  ${YELLOW}SKIP${NC}: automatic selector in an external rule (mktemp failed)"
+	fi
 
 	for AUTO_NODE in $AUTO_W $AUTO_X; do
 		$BSPC node "$AUTO_NODE" -c || true
