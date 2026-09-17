@@ -52,6 +52,9 @@ void parse_rule_consequence(int fd, rule_consequence_t *csq);
 void parse_key_value(char *key, char *value, rule_consequence_t *csq);
 /* Whether `key` is one of the keys a rule consequence takes. */
 bool rule_is_consequence_key(const char *key);
+/* Whether `arg` is written as `key=value` or `key~=value`: the form a
+ * rule's conditions are written in. */
+bool rule_is_key_value(const char *arg);
 void list_rules(FILE *rsp);
 
 #endif

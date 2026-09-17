@@ -1260,10 +1260,14 @@ void cmd_rule(char **args, int num, FILE *rsp)
 			}
 			rule_t *rule = make_rule();
 
-			/* A first argument with an `=` means the new form: a list of
-			 * `property=pattern` conditions mixed with the consequences.
-			 * The old CLASS[:INSTANCE[:NAME]] pattern never contains one. */
-			bool new_form = (strchr(args[0], '=') != NULL);
+			/* The new form is a list of `property=pattern` conditions
+			 * mixed with the consequences, the old one a single
+			 * CLASS[:INSTANCE[:NAME]] pattern. What tells them apart is
+			 * the key: a `key=` or `key~=` opens the new form, anything
+			 * else is a pattern. Not the mere presence of an `=` — the
+			 * old form's last field is the window title, and a title may
+			 * well contain one. */
+			bool new_form = rule_is_key_value(args[0]);
 
 			if (!new_form) {
 				struct tokenize_state state;

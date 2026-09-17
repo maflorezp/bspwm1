@@ -650,6 +650,41 @@ static const struct {
 	{"ignore_tile_limits", NULL},
 };
 
+/* Whether `arg` opens the `property=pattern` form of a rule: a key written
+ * right before an `=` or a `~=`. The two forms are told apart by the shape
+ * of that key — lowercase letters and underscores, which is every key bspwm
+ * has — and not by the mere presence of an `=`, because the old
+ * CLASS[:INSTANCE[:NAME]] form ends in the window title, which is free text
+ * and may well carry one of its own ("st:*:vim = notes"). Judging the shape
+ * rather than asking whether the key is a key bspwm knows is what keeps a
+ * misspelled condition ("clas=kitty") an error instead of turning it into a
+ * class pattern that could never match anything. Only the first `=` is
+ * read, so everything after it stays part of the value. */
+bool rule_is_key_value(const char *arg)
+{
+	if (arg == NULL) {
+		return false;
+	}
+	const char *sep = strchr(arg, '=');
+	if (sep == NULL) {
+		return false;
+	}
+	size_t key_len = (size_t) (sep - arg);
+	/* A `~` right before the `=` belongs to the operator, not to the key. */
+	if (key_len > 0 && sep[-1] == '~') {
+		key_len--;
+	}
+	if (key_len == 0) {
+		return false;
+	}
+	for (size_t i = 0; i < key_len; i++) {
+		if ((arg[i] < 'a' || arg[i] > 'z') && arg[i] != '_') {
+			return false;
+		}
+	}
+	return true;
+}
+
 bool rule_is_consequence_key(const char *key)
 {
 	if (key == NULL) {

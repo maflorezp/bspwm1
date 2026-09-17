@@ -42,6 +42,26 @@ assert_ok "old pattern with an invalid regex after ~ still compiles" \
 	$BSPC rule -a '*:*:~(pendiente' state=floating
 drop_cause "the old pattern with an invalid regex is removed" '*:*:~(pendiente'
 
+# The old form's last field is the window title, which is free text and may
+# well carry an `=` of its own. The form is told apart by the shape of the
+# key instead: only lowercase letters and underscores followed by `=` or
+# `~=` open the new form, so a title with an `=` in it stays a title.
+assert_ok "an old pattern whose title contains = is still the old form" \
+	$BSPC rule -a 'st:*:vim = notes' state=floating
+RULES_OLD_EQ=$($BSPC rule -l)
+assert_eq "and it is listed as it was written" "1" \
+	"$(printf '%s\n' "$RULES_OLD_EQ" | grep -c '^st:\*:vim = notes =>')"
+drop_tail "the old pattern with an = in its title is removed"
+
+# The other way round: the key wins, and the value keeps whatever `=` it
+# has, because only the first one is read.
+assert_ok "a condition keeps the = that follows the first one" \
+	$BSPC rule -a 'name=vim = notes' state=floating
+RULES_NEW_EQ=$($BSPC rule -l)
+assert_eq "and it is listed as a condition" "1" \
+	"$(printf '%s\n' "$RULES_NEW_EQ" | grep -c '^name=vim = notes =>')"
+drop_tail "the condition with an = in its pattern is removed"
+
 # The new form: conditions with a name, mixed in with the consequences.
 # Chromium stays on the list, unremoved, all the way past the reject block
 # below: two checks need it still there, and BEFORE needs a real rule to
