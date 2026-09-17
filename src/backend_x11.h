@@ -26,6 +26,7 @@ extern xcb_atom_t WM_STATE;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_CHANGE_STATE;
+extern xcb_atom_t WM_WINDOW_ROLE;
 extern uint8_t randr_base;
 
 /* X11 event masks */

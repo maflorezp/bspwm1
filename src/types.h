@@ -389,7 +389,8 @@ struct subscriber_list_t {
 typedef struct rule_t rule_t;
 struct rule_t {
 	rule_cond_t conds[RULE_PROP_COUNT];
-	/* The conditions as they were written, for `rule -l` and `rule -r`. */
+	/* The conditions as they were written: what `rule -l` prints, and what
+	 * `rule -r` compares a cause written as conditions against. */
 	char cause[3 * MAXLEN];
 	char effect[MAXLEN];
 	bool one_shot;

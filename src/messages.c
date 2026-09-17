@@ -1249,28 +1249,6 @@ end:
 	return;
 }
 
-/* The keys a rule consequence accepts. Most of them are exactly what
- * `parse_key_value()` (src/rule.c) understands; `ignore_tile_limits` is the
- * one exception — `parse_key_value()` never sees it, `effect_has()`
- * (src/tree.c) reads it straight out of `rule->effect` instead — but it
- * still has to be accepted here, or a valid consequence would be refused as
- * an unknown key. */
-static bool is_consequence_key(const char *key)
-{
-	static const char *keys[] = {
-		"monitor", "desktop", "node", "split_dir", "split_ratio", "state", "layer",
-		"honor_size_hints", "rectangle", "hidden", "sticky", "private", "locked",
-		"marked", "center", "follow", "manage", "focus", "border",
-		"ignore_tile_limits", NULL,
-	};
-	for (const char **k = keys; *k != NULL; k++) {
-		if (streq(*k, key)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void cmd_rule(char **args, int num, FILE *rsp)
 {
 	if (num < 1) {
@@ -1280,17 +1258,32 @@ void cmd_rule(char **args, int num, FILE *rsp)
 
 	while (num > 0) {
 		if (streq("-a", *args) || streq("--add", *args)) {
+			const char *command = *args;
 			num--, args++;
+			/* The options may come before the rule itself, and in the
+			 * new form, which has no positional pattern, that is where
+			 * they are naturally written. Read them before the form is
+			 * decided, or `-o` would be taken for an old-form pattern. */
+			bool one_shot = false;
+			while (num > 0 && (streq("-o", *args) || streq("--one-shot", *args))) {
+				one_shot = true;
+				num--, args++;
+			}
 			if (num < 2) {
-				fail(rsp, "rule %s: Not enough arguments.\n", *(args - 1));
+				fail(rsp, "rule %s: Not enough arguments.\n", command);
 				return;
 			}
 			rule_t *rule = make_rule();
+			rule->one_shot = one_shot;
 
-			/* A first argument with an `=` means the new form: a list of
-			 * `property=pattern` conditions mixed with the consequences.
-			 * The old CLASS[:INSTANCE[:NAME]] pattern never contains one. */
-			bool new_form = (strchr(args[0], '=') != NULL);
+			/* The new form is a list of `property=pattern` conditions
+			 * mixed with the consequences, the old one a single
+			 * CLASS[:INSTANCE[:NAME]] pattern. What tells them apart is
+			 * the key: a `key=` or `key~=` opens the new form, anything
+			 * else is a pattern. Not the mere presence of an `=` — the
+			 * old form's last field is the window title, and a title may
+			 * well contain one. */
+			bool new_form = rule_is_key_value(args[0]);
 
 			if (!new_form) {
 				struct tokenize_state state;
@@ -1359,7 +1352,7 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						}
 						memcpy(key, *args, key_len);
 						key[key_len] = '\0';
-						if (!is_consequence_key(key)) {
+						if (!rule_is_consequence_key(key)) {
 							fail(rsp, "rule: Unknown key: '%s'.\n", key);
 							effect_ok = false;
 							break;
@@ -1377,6 +1370,15 @@ void cmd_rule(char **args, int num, FILE *rsp)
 								effect_ok = false;
 								break;
 							}
+						}
+						/* Refuse what does not fit instead of cutting it
+						 * short: a truncated effect is a rule that does less
+						 * than it was asked to, and says nothing about it. */
+						if (i + strlen(*args) >= sizeof(rule->effect)) {
+							fail(rsp, "rule: %s: The consequences are longer than %zu characters.\n",
+							     key, sizeof(rule->effect) - 1);
+							effect_ok = false;
+							break;
 						}
 						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
 							rule->effect[i] = (*args)[j];
@@ -1501,7 +1503,7 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						snprintf(rule->cause + used, sizeof(rule->cause) - used,
 						         "%s%s", used > 0 ? " " : "", printed);
 #pragma GCC diagnostic pop
-					} else if (is_consequence_key(key)) {
+					} else if (rule_is_consequence_key(key)) {
 						/* Consequences take neither operator: they are
 						 * always exact and case-sensitive, the way
 						 * parse_key_value() (src/rule.c) reads them. */
@@ -1509,6 +1511,15 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						bool value_has_icase_marker = (vlen >= 2 && streq(value + vlen - 2, "/i"));
 						if (is_regex || value_has_icase_marker) {
 							fail(rsp, "rule: %s: Not a condition, can't take an operator or a case marker.\n", key);
+							ok = false;
+							break;
+						}
+						/* Same as the old form: refuse what does not fit,
+						 * the way the conditions above are refused when
+						 * they do not fit the listing. */
+						if (i + strlen(*args) >= sizeof(rule->effect)) {
+							fail(rsp, "rule: %s: The consequences are longer than %zu characters.\n",
+							     key, sizeof(rule->effect) - 1);
 							ok = false;
 							break;
 						}

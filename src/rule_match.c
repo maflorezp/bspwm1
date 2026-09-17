@@ -108,6 +108,12 @@ bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
 			snprintf(err, len, "%s takes no regular expression", rule_prop_name(prop));
 			return false;
 		}
+		/* Their values are a closed list compared as written: a case
+		 * marker would do nothing, and `rule -l` could not print it back. */
+		if (cond->ignore_case) {
+			snprintf(err, len, "%s takes no case marker", rule_prop_name(prop));
+			return false;
+		}
 		if (!value_in(list, cond->text)) {
 			snprintf(err, len, "'%s' is not a %s", cond->text, rule_prop_name(prop));
 			return false;
@@ -117,15 +123,16 @@ bool rule_cond_compile(rule_cond_t *cond, rule_prop_t prop, const char *value,
 			bool on = strcmp(cond->text, "on") == 0 || strcmp(cond->text, "true") == 0;
 			snprintf(cond->text, sizeof(cond->text), "%s", on ? "on" : "off");
 		}
-		cond->ignore_case = false;
 	}
 
 	if (cond->is_regex) {
 		int regex_flags = REG_EXTENDED | REG_NOSUB | (cond->ignore_case ? REG_ICASE : 0);
 		int status = regcomp(&cond->preg, cond->text, regex_flags);
 		if (status != 0) {
+			/* POSIX leaves `preg` undefined when regcomp() fails, so
+			 * there is nothing to regfree(); `used` stays false, and
+			 * rule_cond_free() will not try either. */
 			regerror(status, &cond->preg, err, len);
-			regfree(&cond->preg);
 			return false;
 		}
 	}
