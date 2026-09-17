@@ -46,7 +46,7 @@ rule_t *make_rule(void)
 	if (r == NULL) {
 		return NULL;
 	}
-	r->class_name[0] = r->instance_name[0] = r->name[0] = r->effect[0] = '\0';
+	r->cause[0] = r->effect[0] = '\0';
 	r->next = r->prev = NULL;
 	r->one_shot = false;
 	return r;
@@ -81,6 +81,9 @@ void remove_rule(rule_t *r)
 	}
 	if (r == rule_tail) {
 		rule_tail = prev;
+	}
+	for (int i = 0; i < RULE_PROP_COUNT; i++) {
+		rule_cond_free(&r->conds[i]);
 	}
 	free(r);
 }
@@ -119,9 +122,9 @@ void remove_rule_by_cause(char *cause)
 
     while (r != NULL) {
 	    rule_t *next = r->next;
-	    if ((class_name != NULL && (streq(class_name, MATCH_ANY) || streq(r->class_name, class_name))) &&
-			    (instance_name == NULL || streq(instance_name, MATCH_ANY) || streq(r->instance_name, instance_name)) &&
-			    (name == NULL || streq(name, MATCH_ANY) || streq(r->name, name))) {
+	    if ((streq(class_name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_CLASS]), class_name)) &&
+	        (streq(instance_name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_INSTANCE]), instance_name)) &&
+	        (streq(name, MATCH_ANY) || streq(rule_cond_pattern(&r->conds[RULE_PROP_NAME]), name))) {
 		    remove_rule(r);
 	    }
 	    r = next;
@@ -444,15 +447,16 @@ void apply_rules(bspwm_wid_t win, rule_consequence_t *csq)
 
 	window_props_t props;
 	collect_window_props(win, csq, type, transient_for, &props);
-	/* Used by the rule loop in the next commit. */
-	(void) props;
+
+	const char *values[RULE_PROP_COUNT] = {
+		props.class_name, props.instance_name, props.name,
+		props.type, props.role, props.transient,
+	};
 
 	rule_t *rule = rule_head;
 	while (rule != NULL) {
 		rule_t *next = rule->next;
-		if ((streq(rule->class_name, MATCH_ANY) || streq(rule->class_name, csq->class_name)) &&
-		    (streq(rule->instance_name, MATCH_ANY) || streq(rule->instance_name, csq->instance_name)) &&
-		    (streq(rule->name, MATCH_ANY) || streq(rule->name, csq->name))) {
+		if (rule_conds_match(rule->conds, values)) {
 			char effect[MAXLEN];
 			snprintf(effect, sizeof(effect), "%s", rule->effect);
 			parse_keys_values(effect, csq);
@@ -590,6 +594,6 @@ void parse_key_value(char *key, char *value, rule_consequence_t *csq)
 void list_rules(FILE *rsp)
 {
 	for (rule_t *r = rule_head; r != NULL; r = r->next) {
-		fprintf(rsp, "%s:%s:%s %c> %s\n", r->class_name, r->instance_name, r->name, r->one_shot?'-':'=', r->effect);
+		fprintf(rsp, "%s %c> %s\n", r->cause, r->one_shot?'-':'=', r->effect);
 	}
 }

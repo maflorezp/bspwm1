@@ -1272,17 +1272,31 @@ void cmd_rule(char **args, int num, FILE *rsp)
 				return;
 			}
 
-			snprintf(rule->class_name, sizeof(rule->class_name), "%s", class_name);
-			rule->class_name[sizeof(rule->class_name) - 1] = '\0';
-			snprintf(rule->instance_name, sizeof(rule->instance_name), "%s",
-					 instance_name[0] == '\0' ? MATCH_ANY : instance_name);
-			rule->instance_name[sizeof(rule->instance_name) - 1] = '\0';
-			snprintf(rule->name, sizeof(rule->name), "%s",
-					 name[0] == '\0' ? MATCH_ANY : name);
-			rule->name[sizeof(rule->name) - 1] = '\0';
+			char err[MAXLEN];
+			const char *fields[3] = {class_name, instance_name, name};
+			const rule_prop_t props[3] = {RULE_PROP_CLASS, RULE_PROP_INSTANCE, RULE_PROP_NAME};
+			bool ok = true;
+			for (int f = 0; f < 3 && ok; f++) {
+				const char *value = (fields[f][0] == '\0') ? MATCH_ANY : fields[f];
+				if (streq(value, MATCH_ANY)) {
+					continue;
+				}
+				if (!rule_cond_compile(&rule->conds[props[f]], props[f], value, err, sizeof(err))) {
+					fail(rsp, "rule: %s: %s\n", rule_prop_name(props[f]), err);
+					ok = false;
+				}
+			}
+			snprintf(rule->cause, sizeof(rule->cause), "%s:%s:%s",
+			         class_name,
+			         instance_name[0] == '\0' ? MATCH_ANY : instance_name,
+			         name[0] == '\0' ? MATCH_ANY : name);
 			free(class_name);
 			free(instance_name);
 			free(name);
+			if (!ok) {
+				remove_rule(rule);   /* frees the conditions compiled so far */
+				return;
+			}
 
 			num--, args++;
 			size_t i = 0;
