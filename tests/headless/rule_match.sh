@@ -1,5 +1,17 @@
 # Rule conditions: how a rule picks the windows it applies to.
 
+# The state of the window named `$1`, read off `bspc query -T`'s JSON: the
+# leaf has exactly one "state" key, on its nested "client" object.
+rule_state() {
+	$BSPC query -T -n "$1" 2>/dev/null | grep -o '"state":"[a-z_]*"' | head -1 | cut -d'"' -f4
+}
+
+# The boolean flag `$2` (e.g. "sticky") of the node named `$1`, read off the
+# same JSON, as "true" or "false".
+rule_flag() {
+	$BSPC query -T -n "$1" 2>/dev/null | grep -o "\"$2\":[a-z]*" | head -1 | cut -d: -f2
+}
+
 echo ""
 echo "== Rule matching =="
 
@@ -117,3 +129,81 @@ assert_eq "a refused rule is not added" "$BEFORE" "$($BSPC rule -l | wc -l)"
 
 # Chromium was needed all the way through the block above; drop it now.
 $BSPC rule -r tail || true
+
+# End-to-end: real windows, declaring class, role, type and parent, matched
+# against real rules. Needs test_window built with --role/--type/--transient
+# and only runs against X11 — the wlroots test client has no such options.
+if [ "$BACKEND" = "x11" ] && [ -f ./test_window ]; then
+	# Case: the rule says Pavucontrol, the window says pavucontrol.
+	assert_ok "add the case insensitive rule" \
+		$BSPC rule -a class=Pavucontrol/i state=floating
+	./test_window rm-case pavucontrol >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "a rule with /i matches whatever the case" "floating" "$(rule_state "$W")"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+
+	# A regular expression on the instance: the web app, not the browser.
+	# test_window's first positional argument is the instance name, ICCCM's
+	# WM_CLASS order (verified against a real window's className/
+	# instanceName): crx_abcdef has to come first, or it lands in the class
+	# field instead and the rule never sees it.
+	assert_ok "add the web app rule" \
+		$BSPC rule -a 'instance~=^crx_' state=floating
+	./test_window crx_abcdef rm-app >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "the web app matches the regular expression" "floating" "$(rule_state "$W")"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	./test_window rm-browser google-chrome >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "the plain browser window does not" "tiled" "$(rule_state "$W")"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+
+	# The role.
+	assert_ok "add the role rule" $BSPC rule -a role=pop-up sticky=on
+	./test_window rm-role RmRole --role pop-up >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "a window with that role is sticky" "true" "$(rule_flag "$W" sticky)"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+
+	# The window type. type=dialog is not tested against bspwm's own
+	# floating-by-default behaviour for dialogs — it would not tell the rule
+	# apart from that default. sticky=on is a consequence bspwm never gives
+	# a dialog on its own, so it does tell them apart.
+	assert_ok "add the dialog rule" $BSPC rule -a type=dialog sticky=on
+	./test_window rm-dialog RmDialog --type dialog >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "a dialog is sticky" "true" "$(rule_flag "$W" sticky)"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+
+	# A child window.
+	assert_ok "add the child window rule" $BSPC rule -a transient=on sticky=on
+	./test_window rm-child RmChild --transient >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "a child window is sticky" "true" "$(rule_flag "$W" sticky)"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	./test_window rm-plain RmChild >/dev/null 2>&1 &
+	sleep 0.5
+	W=$($BSPC query -N -n focused)
+	assert_eq "a window with no parent is not" "false" "$(rule_flag "$W" sticky)"
+	$BSPC node "$W" -c || true
+	sleep 0.3
+	$BSPC rule -r tail || true
+else
+	printf "%b\n" "  ${YELLOW}SKIP${NC}: rule conditions against real windows (needs X11 and test_window)"
+fi
