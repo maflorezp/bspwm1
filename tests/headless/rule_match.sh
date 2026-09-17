@@ -173,6 +173,22 @@ assert_eq "no trailing space is left in the effect" "1" \
 	"$(printf '%s\n' "$RULES3" | grep -c '^class=kitty => state=floating$')"
 drop_tail "the rule written consequence first is removed"
 
+# The consequences are kept in a 255-character effect. One that fits
+# right up to the last character is kept whole, in both forms, and so is a
+# second one squeezed in after it.
+D247=$(printf '%0247d' 0 | tr 0 d)
+assert_ok "a consequence exactly as long as the effect allows is accepted" \
+	$BSPC rule -a class=kitty "desktop=$D247"
+assert_eq "and it is listed whole" "1" \
+	"$($BSPC rule -l | grep -c "^class=kitty => desktop=$D247\$")"
+drop_tail "the longest consequence is removed"
+D237=$(printf '%0237d' 0 | tr 0 d)
+assert_ok "two consequences that exactly fill the effect are accepted" \
+	$BSPC rule -a kitty "desktop=$D237" sticky=on
+assert_eq "and both are listed whole" "1" \
+	"$($BSPC rule -l | grep -c "^kitty:\*:\* => desktop=$D237 sticky=on\$")"
+drop_tail "the two consequences filling the effect are removed"
+
 # Everything that must be refused, with the rule never added. Chromium is
 # still the only rule on the list, so a real BEFORE also proves a refusal
 # does not disturb what was already there.
@@ -197,6 +213,22 @@ assert_fail "reject a value longer than the pattern buffer" \
 	$BSPC rule -a "class=$LONG" state=floating
 assert_fail "a value too long is refused even when it ends in /i" \
 	$BSPC rule -a "class=$LONG/i" state=floating
+
+# One character past the effect, or a consequence left with no room at all,
+# is refused rather than cut short in silence: the rule would otherwise be
+# added, exit 0, and do less than it was asked to.
+D248=$(printf '%0248d' 0 | tr 0 d)
+assert_fail "reject a consequence one character longer than the effect" \
+	$BSPC rule -a class=kitty "desktop=$D248"
+assert_fail "the old form refuses it too" \
+	$BSPC rule -a kitty "desktop=$D248"
+C60=$(printf '%060d' 0 | tr 0 d)
+assert_fail "reject consequences that do not fit the effect together" \
+	$BSPC rule -a class=kitty "desktop=$C60" "monitor=$C60" "node=$C60" \
+	"rectangle=$C60" sticky=on
+assert_fail "the old form refuses them together too" \
+	$BSPC rule -a kitty "desktop=$C60" "monitor=$C60" "node=$C60" \
+	"rectangle=$C60" sticky=on
 
 P250=$(printf '%0250d' 0 | tr 0 b)
 assert_fail "reject a rule whose conditions do not fit the listing" \

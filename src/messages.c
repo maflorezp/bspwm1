@@ -1366,6 +1366,15 @@ void cmd_rule(char **args, int num, FILE *rsp)
 								break;
 							}
 						}
+						/* Refuse what does not fit instead of cutting it
+						 * short: a truncated effect is a rule that does less
+						 * than it was asked to, and says nothing about it. */
+						if (i + strlen(*args) >= sizeof(rule->effect)) {
+							fail(rsp, "rule: %s: The consequences are longer than %zu characters.\n",
+							     key, sizeof(rule->effect) - 1);
+							effect_ok = false;
+							break;
+						}
 						for (size_t j = 0; i < sizeof(rule->effect) - 1 && j < strlen(*args); i++, j++) {
 							rule->effect[i] = (*args)[j];
 						}
@@ -1497,6 +1506,15 @@ void cmd_rule(char **args, int num, FILE *rsp)
 						bool value_has_icase_marker = (vlen >= 2 && streq(value + vlen - 2, "/i"));
 						if (is_regex || value_has_icase_marker) {
 							fail(rsp, "rule: %s: Not a condition, can't take an operator or a case marker.\n", key);
+							ok = false;
+							break;
+						}
+						/* Same as the old form: refuse what does not fit,
+						 * the way the conditions above are refused when
+						 * they do not fit the listing. */
+						if (i + strlen(*args) >= sizeof(rule->effect)) {
+							fail(rsp, "rule: %s: The consequences are longer than %zu characters.\n",
+							     key, sizeof(rule->effect) - 1);
 							ok = false;
 							break;
 						}
