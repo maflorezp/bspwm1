@@ -62,6 +62,16 @@ assert_eq "and it is listed as a condition" "1" \
 	"$(printf '%s\n' "$RULES_NEW_EQ" | grep -c '^name=vim = notes =>')"
 drop_tail "the condition with an = in its pattern is removed"
 
+# The one pattern the key test reads differently is a lone lowercase class
+# with an `=`: it looks like a key. The manual gives the way out.
+RM_BEFORE=$($BSPC rule -l | wc -l)
+assert_fail "a lone lowercase class with an = reads as an unknown key" \
+	$BSPC rule -a 'foo=bar' state=floating
+assert_eq "and nothing is added for it" "$RM_BEFORE" "$($BSPC rule -l | wc -l)"
+assert_ok "the same class is given as a condition" \
+	$BSPC rule -a 'class=foo=bar' state=floating
+drop_cause "the class with an = is removed by its cause" 'class=foo=bar'
+
 # The new form has no positional pattern, so writing the options first is
 # the natural thing to do; they have to be read as options and not as the
 # pattern of a rule that does not have one.
@@ -112,7 +122,7 @@ do
 done
 assert_eq "every consequence key gave a rule" "$((CSQ_BEFORE + CSQ_COUNT))" \
 	"$($BSPC rule -l | wc -l)"
-while [ "$($BSPC rule -l | wc -l)" -gt "$CSQ_BEFORE" ] ; do
+for _ in $(seq "$CSQ_COUNT") ; do
 	$BSPC rule -r tail
 done
 assert_eq "the consequence key rules are removed" "$CSQ_BEFORE" "$($BSPC rule -l | wc -l)"
@@ -200,11 +210,15 @@ RM_BEFORE=$($BSPC rule -l | wc -l)
 $BSPC rule -r class=kitty
 assert_eq "a cause does not remove a rule with more conditions" "$RM_BEFORE" \
 	"$($BSPC rule -l | wc -l)"
-$BSPC rule -r class=kitty/i
-assert_eq "nor one with a different case marker" "$RM_BEFORE" \
-	"$($BSPC rule -l | wc -l)"
 drop_cause "the rule with two conditions is removed by its own cause" \
 	'class=kitty instance=term'
+assert_ok "add a rule to keep against another case marker" \
+	$BSPC rule -a class=kitty state=floating
+RM_BEFORE=$($BSPC rule -l | wc -l)
+$BSPC rule -r class=kitty/i
+assert_eq "a cause with another case marker does not remove the rule" "$RM_BEFORE" \
+	"$($BSPC rule -l | wc -l)"
+drop_cause "the rule is removed by its own cause" 'class=kitty'
 
 # The old field-by-field removal reaches rules written as conditions too,
 # as the manual says: a pattern compares the class, instance and name
