@@ -148,7 +148,8 @@ int main(void)
 
 	/* The pattern is kept as it was written, and printing puts the
 	 * operator and the /i back the new-syntax way. */
-	rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX | RULE_COND_ICASE, err, sizeof(err));
+	check("a regex with a case marker compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX | RULE_COND_ICASE, err, sizeof(err)));
 	check_str("the pattern keeps its shape", "^crx_", rule_cond_pattern(&cond));
 	char printed[512];
 	rule_cond_print(&cond, RULE_PROP_INSTANCE, printed, sizeof(printed));
@@ -156,16 +157,19 @@ int main(void)
 	rule_cond_free(&cond);
 
 	/* An exact, case-sensitive condition prints with neither mark. */
-	rule_cond_compile(&cond, RULE_PROP_CLASS, "kitty", 0, err, sizeof(err));
+	check("an exact condition compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_CLASS, "kitty", 0, err, sizeof(err)));
 	rule_cond_print(&cond, RULE_PROP_CLASS, printed, sizeof(printed));
 	check_str("an exact condition prints with no operator", "class=kitty", printed);
 	rule_cond_free(&cond);
 
 	/* Recompiling over a `cond` that still holds a regex leaks it: free it
 	 * first. The new condition replaces the old one entirely. */
-	rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX, err, sizeof(err));
+	check("the first regex compiles", true,
+	      rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX, err, sizeof(err)));
 	rule_cond_free(&cond);
-	rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^tab_", RULE_COND_REGEX, err, sizeof(err));
+	check("the second regex compiles over the freed condition", true,
+	      rule_cond_compile(&cond, RULE_PROP_INSTANCE, "^tab_", RULE_COND_REGEX, err, sizeof(err)));
 	check("the old pattern no longer matches after recompiling", false,
 	      rule_cond_matches(&cond, "crx_abc"));
 	check("the new pattern matches after recompiling", true,
@@ -175,8 +179,10 @@ int main(void)
 	/* A whole rule: every condition has to hold. */
 	rule_cond_t conds[RULE_PROP_COUNT];
 	memset(conds, 0, sizeof(conds));
-	rule_cond_compile(&conds[RULE_PROP_CLASS], RULE_PROP_CLASS, "Google-chrome", 0, err, sizeof(err));
-	rule_cond_compile(&conds[RULE_PROP_INSTANCE], RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX, err, sizeof(err));
+	check("the class condition of the rule compiles", true,
+	      rule_cond_compile(&conds[RULE_PROP_CLASS], RULE_PROP_CLASS, "Google-chrome", 0, err, sizeof(err)));
+	check("the instance condition of the rule compiles", true,
+	      rule_cond_compile(&conds[RULE_PROP_INSTANCE], RULE_PROP_INSTANCE, "^crx_", RULE_COND_REGEX, err, sizeof(err)));
 	const char *web_app[RULE_PROP_COUNT] = {"Google-chrome", "crx_abc", "Mail", "normal", "", "off"};
 	const char *browser[RULE_PROP_COUNT] = {"Google-chrome", "google-chrome", "News", "normal", "", "off"};
 	check("both conditions hold for the web app", true, rule_conds_match(conds, web_app));
