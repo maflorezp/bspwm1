@@ -852,7 +852,7 @@ Global Settings
 	Ignore strut hinting from clients requesting to reserve space (i.e. task bars).
 
 'allow_net_wm_moveresize'::
-	Let clients start a move of their own window with *_NET_WM_MOVERESIZE*, as applications that draw their own title bar do. Only moving is handled. Defaults to *true*.
+	Let clients start a move or a resize of their own window with *_NET_WM_MOVERESIZE*, as applications that draw their own title bar do. When *false*, *_NET_WM_MOVERESIZE* is not advertised, so those clients move and resize their windows themselves. Defaults to *true*.
 
 'center_pseudo_tiled'::
 	Center pseudo tiled windows into their tiling rectangles. Defaults to 'true'.

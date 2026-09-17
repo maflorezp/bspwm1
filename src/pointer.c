@@ -218,10 +218,48 @@ resize_handle_t get_handle(node_t *n, bspwm_point_t pos, pointer_action_t pac)
 	return rh;
 }
 
-/* Grab the pointer and run a move or resize of `loc.node` until the button is
- * released. Shared by the pointer bindings and by clients that ask to be
- * moved through _NET_WM_MOVERESIZE. */
-static void drag_node(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
+/* The drag each _NET_WM_MOVERESIZE pointer direction asks for. The client
+ * names the edge or corner itself: the pointer can be outside the window,
+ * over a client-drawn shadow, where get_handle would pick another one. The
+ * keyboard directions are not listed, so they are ignored. */
+static const struct {
+	pointer_action_t pac;
+	resize_handle_t rh;
+} moveresize_drags[] = {
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_TOPLEFT] = {ACTION_RESIZE_CORNER, HANDLE_TOP_LEFT},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_TOP] = {ACTION_RESIZE_SIDE, HANDLE_TOP},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_TOPRIGHT] = {ACTION_RESIZE_CORNER, HANDLE_TOP_RIGHT},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_RIGHT] = {ACTION_RESIZE_SIDE, HANDLE_RIGHT},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOMRIGHT] = {ACTION_RESIZE_CORNER, HANDLE_BOTTOM_RIGHT},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOM] = {ACTION_RESIZE_SIDE, HANDLE_BOTTOM},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOMLEFT] = {ACTION_RESIZE_CORNER, HANDLE_BOTTOM_LEFT},
+	[XCB_EWMH_WM_MOVERESIZE_SIZE_LEFT] = {ACTION_RESIZE_SIDE, HANDLE_LEFT},
+	[XCB_EWMH_WM_MOVERESIZE_MOVE] = {ACTION_MOVE, HANDLE_BOTTOM_RIGHT},
+};
+
+/* Whether any pointer button is down. Also reports where the pointer is. */
+static bool pointer_button_held(bspwm_point_t *pos)
+{
+	xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(dpy,
+		xcb_query_pointer(dpy, root), NULL);
+	if (qpr == NULL)
+		return false;
+	bool held = qpr->mask & (XCB_KEY_BUT_MASK_BUTTON_1 | XCB_KEY_BUT_MASK_BUTTON_2 |
+	                         XCB_KEY_BUT_MASK_BUTTON_3 | XCB_KEY_BUT_MASK_BUTTON_4 |
+	                         XCB_KEY_BUT_MASK_BUTTON_5);
+	if (pos != NULL) {
+		pos->x = qpr->root_x;
+		pos->y = qpr->root_y;
+	}
+	free(qpr);
+	return held;
+}
+
+/* Grab the pointer and run a move or resize of `loc.node` from the handle
+ * `rh` until the button is released. Shared by the pointer bindings and by
+ * clients that ask to be dragged through _NET_WM_MOVERESIZE. */
+static void drag_node(coordinates_t loc, pointer_action_t pac, resize_handle_t rh,
+                      bspwm_point_t pos, bool from_client)
 {
 	if (loc.node->client->state == STATE_FULLSCREEN)
 		return;
@@ -237,6 +275,13 @@ static void drag_node(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos
 		return;
 	}
 	free(reply);
+
+	/* A client asks after its own button press, so the button may have gone
+	 * up before the grab: then no release would ever end the drag. */
+	if (from_client && !pointer_button_held(NULL)) {
+		xcb_ungrab_pointer(dpy, XCB_CURRENT_TIME);
+		return;
+	}
 
 	/* Windows-like behavior: drag/resize raises the window to the top.
 	 * Route through bspwm's own focus/stack machinery so the internal
@@ -258,7 +303,7 @@ static void drag_node(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos
 		          loc.monitor->id, loc.desktop->id, loc.node->id);
 	}
 
-	track_pointer(loc, pac, pos);
+	track_pointer(loc, pac, rh, pos);
 }
 
 bool grab_pointer(pointer_action_t pac)
@@ -307,40 +352,40 @@ bool grab_pointer(pointer_action_t pac)
 		return focused;
 	}
 
-	drag_node(loc, pac, pos);
+	drag_node(loc, pac, get_handle(loc.node, pos, pac), pos, false);
 	return true;
 }
 
-void pointer_move_node(coordinates_t loc)
+void pointer_moveresize_node(coordinates_t loc, uint32_t direction)
 {
+	/* A cancel ends the drag in progress, so it comes before the guard
+	 * that ignores requests during a drag. */
+	if (direction == XCB_EWMH_WM_MOVERESIZE_CANCEL) {
+		if (grabbing && loc.node != NULL && loc.node == grabbed_node)
+			grabbing = false;
+		return;
+	}
+	if (direction >= LENGTH(moveresize_drags))
+		return;
+
 	/* Ignore requests during a drag and for windows that are not shown. */
 	if (grabbing || loc.node == NULL || loc.node->client == NULL ||
-	    loc.desktop != loc.monitor->desk)
+	    loc.node->hidden || loc.desktop != loc.monitor->desk)
 		return;
 
-	xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(dpy,
-		xcb_query_pointer(dpy, root), NULL);
-	if (qpr == NULL)
-		return;
 	/* The request follows a button press: with every button already up, no
 	 * release would ever end the drag. */
-	bool held = qpr->mask & (XCB_KEY_BUT_MASK_BUTTON_1 | XCB_KEY_BUT_MASK_BUTTON_2 |
-	                         XCB_KEY_BUT_MASK_BUTTON_3 | XCB_KEY_BUT_MASK_BUTTON_4 |
-	                         XCB_KEY_BUT_MASK_BUTTON_5);
-	bspwm_point_t pos = {qpr->root_x, qpr->root_y};
-	free(qpr);
-	if (!held)
+	bspwm_point_t pos;
+	if (!pointer_button_held(&pos))
 		return;
-	drag_node(loc, ACTION_MOVE, pos);
+	drag_node(loc, moveresize_drags[direction].pac, moveresize_drags[direction].rh, pos, true);
 }
 
-void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos)
+void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, bspwm_point_t pos)
 {
 	node_t *n = loc.node;
 	if (!n || !n->client)
 		return;
-
-	resize_handle_t rh = get_handle(loc.node, pos, pac);
 
 	uint16_t last_motion_x = pos.x, last_motion_y = pos.y;
 	xcb_timestamp_t last_motion_time = 0;

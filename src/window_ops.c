@@ -469,7 +469,7 @@ void invalidate_geometry_cache(bspwm_wid_t win)
 /* ---- Pointer tracking stubs ---- */
 
 bool grab_pointer(pointer_action_t pac) { (void)pac; return false; }
-void track_pointer(coordinates_t loc, pointer_action_t pac, bspwm_point_t pos) { (void)loc; (void)pac; (void)pos; }
+void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, bspwm_point_t pos) { (void)loc; (void)pac; (void)rh; (void)pos; }
 int16_t modfield_from_keysym(uint32_t keysym) { (void)keysym; return 0; }
 resize_handle_t get_handle(node_t *n, bspwm_point_t pos, pointer_action_t pac) { (void)n; (void)pos; (void)pac; return HANDLE_RIGHT; }
 void window_grab_button(bspwm_wid_t win, uint8_t button, uint16_t modifier) { (void)win; (void)button; (void)modifier; }
