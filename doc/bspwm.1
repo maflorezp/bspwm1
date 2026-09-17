@@ -1119,7 +1119,11 @@ or
 \fIst:*:vim = notes\fR, is still a pattern\&. Only the first
 \fI=\fR
 of a condition ends the property, which lets the same title be written as a condition too:
-\fIname=vim = notes\fR\&.
+\fIname=vim = notes\fR\&. The one pattern that cannot be given as such is a lone lowercase class containing an
+\fI=\fR, such as
+\fIfoo=bar\fR, which reads as the unknown key
+\fIfoo\fR: write it as
+\fIclass=foo=bar\fR\&.
 .sp
 With
 \fI=\fR

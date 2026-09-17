@@ -658,7 +658,9 @@ conditions and effects, and a key that is neither a property nor an effect is an
 error. Anything else is the pattern above, so a pattern whose title contains an
 '=', such as 'st:\*:vim = notes', is still a pattern. Only the first '=' of a
 condition ends the property, which lets the same title be written as a condition
-too: 'name=vim = notes'.
+too: 'name=vim = notes'. The one pattern that cannot be given as such is a lone
+lowercase class containing an '=', such as 'foo=bar', which reads as the unknown key
+'foo': write it as 'class=foo=bar'.
 
 With '=' the pattern is compared as written, and '\*' alone matches anything, as it
 does in the pattern above. With '\~=' the pattern is a POSIX extended regular
