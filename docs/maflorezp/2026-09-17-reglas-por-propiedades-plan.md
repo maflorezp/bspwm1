@@ -1307,7 +1307,24 @@ expression: 'type' is one of *normal*, *dock*, *desktop*, *notification*, *dialo
 
 A rule is refused when a pattern is not a valid regular expression, a condition is
 repeated, or a key is neither a property nor an effect.
+
+Only rules that look at 'class' and 'instance' carry 'ignore_tile_limits': the other
+properties are not known yet when a window is inserted.
+
+----
+bspc rule -a class=Pavucontrol/i state=floating
+bspc rule -a 'class~=^(eog|feh|ristretto)$' state=floating focus=on
+bspc rule -a class=Google-chrome instance~=^crx_ state=floating center=on
+bspc rule -a type=dialog state=floating center=on
+bspc rule -a class=Google-chrome role=pop-up state=floating
+bspc rule -a transient=on state=floating
+bspc rule -a Google-chrome:crx_abcdef desktop=work follow=on
+----
 ```
+
+El bloque `----` es la forma en que este manual escribe ejemplos literales; mira la sección
+`DESKTOP_SEL` (`doc/bspwm.1.asciidoc:217-225`) para seguir el mismo estilo. La última línea del
+bloque es a propósito la forma antigua, para dejar claro que sigue funcionando.
 
 Ejecuta `make doc VERCMD=false`. Si `a2x` no está instalado (`command -v a2x`), edita
 `doc/bspwm.1` a mano con el mismo formato roff que la entrada vecina y dilo en el informe.
