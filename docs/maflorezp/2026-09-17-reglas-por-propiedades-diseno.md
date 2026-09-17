@@ -244,7 +244,8 @@ La rama `rule-match` quedó en `3fb197b` (33 commits sobre `upstream/master`, pu
 `local` (`be8aa61`, 305/305). El paquete instalado es `1.6.2.r112.gbe8aa61`. La configuración de
 Mauricio ya usa la sintaxis nueva: 95 reglas pasaron a 29 (dotfiles `cbe5414`).
 
-La revisión final de toda la rama dio 0 críticos, 6 importantes y 15 menores. Una ronda arregló los
+La revisión final de toda la rama (`2026-09-17-reglas-por-propiedades-revision-final.md`) dio 0
+críticos, 6 importantes y 15 menores. Una ronda arregló los
 6 importantes y 7 menores; la re-revisión la aprobó y dejó 3 menores, también arreglados.
 
 ### Decisiones que cambian lo escrito arriba
