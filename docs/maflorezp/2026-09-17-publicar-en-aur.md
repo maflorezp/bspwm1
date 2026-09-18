@@ -1,7 +1,10 @@
 # Publicar `bspwm1-maflorezp-git` en AUR
 
-El PKGBUILD que se publica vive en `pkg/arch/bspwm1-maflorezp-git/`, junto al `.SRCINFO`. La copia
-de `~/.dotFiles/pkgbuilds/` es sólo para compilar en caliente mientras se desarrolla.
+El PKGBUILD que se publica vive en `pkg/arch/bspwm1-maflorezp-git/`, junto al `.SRCINFO`. Es el
+único; la copia que había en `~/.dotFiles/pkgbuilds/` con su `build.sh` se retiró el 2026-09-18,
+porque compilaba exactamente lo mismo que AUR.
+
+**Publicado el 2026-09-18.** El clon de AUR está en `/websites/personal/aur/bspwm1-maflorezp-git`.
 
 Comprobado el 2026-09-17: desde un directorio vacío, `makepkg` clona el repo público, compila y
 genera el paquete con `bspwm`, `bspc` y los dos manuales. Es decir, funciona tal cual para
@@ -29,8 +32,9 @@ cualquiera que lo instale, no sólo aquí.
 AUR es un repositorio git por paquete. El primer push crea el paquete.
 
 ```sh
-git clone ssh://aur@aur.archlinux.org/bspwm1-maflorezp-git.git ~/aur/bspwm1-maflorezp-git
-cd ~/aur/bspwm1-maflorezp-git
+git clone ssh://aur@aur.archlinux.org/bspwm1-maflorezp-git.git \
+    /websites/personal/aur/bspwm1-maflorezp-git
+cd /websites/personal/aur/bspwm1-maflorezp-git
 
 cp /websites/personal/bspwm/pkg/arch/bspwm1-maflorezp-git/{PKGBUILD,.SRCINFO} .
 
@@ -42,14 +46,25 @@ git push
 **Sólo van esos dos ficheros.** Nada de fuentes, ni paquetes, ni `.gitignore`: AUR rechaza el push
 si aparecen.
 
-## Después, en los otros servidores
+## Instalar y actualizar, aquí y en los otros servidores
 
 ```sh
-yay -S bspwm1-maflorezp-git
+yay -S bspwm1-maflorezp-git   # instalar
+yay -Syu --devel              # actualizar cuando la rama local avance
 ```
 
 Cada instalación clona la rama `local` en ese momento, así que todos acaban en el mismo commit que
 `local` tenga ese día. El paquete sustituye a `bspwm` y a `bspwm1`.
+
+`--devel` es lo que hace que yay mire el último commit de la rama; sin esa opción se fía del
+`pkgver` publicado en AUR y no ve los avances de `local`.
+
+## La identidad de los commits
+
+El primer commit (`3a0d34c`) quedó con `maflorez@cognox.com`, y **no se puede arreglar**: el hook de
+AUR rechaza cualquier push que no sea avance directo, así que no hay reescritura posible. Los
+siguientes ya salen bien: hay un `includeIf` por carpeta en `~/.gitconfig` que fija
+`maflorezp@gmail.com` en `/websites/personal/bspwm`, sus worktrees y `/websites/personal/aur`.
 
 ## Mantenimiento
 
