@@ -430,6 +430,44 @@ done
 
 . ./headless/rule_match.sh
 
+echo ""
+echo "== Withdrawn windows =="
+
+# A window the client withdraws must stay gone, restart included.
+#
+# The window manager owns _NET_WM_DESKTOP. When it stops managing a window it
+# has to take the property back, or the window keeps claiming a desktop it no
+# longer belongs to -- and adopt_orphans(), which trusts exactly that property,
+# picks it up again on the next restart. The window is then mapped behind the
+# client's back: the client still believes it is hidden, never paints it, and
+# what is left on screen is a frame with stale pixels in it that also takes the
+# focus. Tray applications hit this on every restart, because hiding to the
+# tray is a withdrawal.
+if [ "$BACKEND" = "x11" ] && [ -f ./test_window ] && [ -f ./withdraw_window ]; then
+	./test_window withdrawn Withdrawn >/dev/null 2>&1 &
+	WITHDRAWN_CLIENT=$!
+	sleep 0.5
+	WITHDRAWN_WIN=$($BSPC query -N -n focused 2>/dev/null)
+	assert_not_empty "the window is managed to begin with" "$WITHDRAWN_WIN"
+
+	./withdraw_window "$WITHDRAWN_WIN" >/dev/null 2>&1
+	sleep 0.5
+	assert_fail "a withdrawn window is no longer managed" \
+		$BSPC query -N -n "$WITHDRAWN_WIN"
+
+	$BSPC wm -r
+	sleep 2
+	assert_ok "bspwm answers again after the restart" $BSPC query -M
+	assert_fail "a withdrawn window is not adopted on restart" \
+		$BSPC query -N -n "$WITHDRAWN_WIN"
+
+	kill "$WITHDRAWN_CLIENT" 2>/dev/null || true
+	wait "$WITHDRAWN_CLIENT" 2>/dev/null || true
+	sleep 0.3
+else
+	printf "%b\n" "  ${YELLOW}SKIP${NC}: withdrawn windows (needs X11, test_window and withdraw_window)"
+fi
+
 # ---- Quit ----
 
 echo ""

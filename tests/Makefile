@@ -6,6 +6,7 @@ all: test_magnet
 all: test_edge_zone
 all: send_moveresize
 all: test_rule_match
+all: withdraw_window
 
 test_window: test_window.c
 	$(CC) $(CFLAGS) -o $@ $< -lxcb -lxcb-icccm
@@ -28,7 +29,10 @@ send_moveresize: send_moveresize.c
 test_rule_match: test_rule_match.c ../src/rule_match.c ../src/rule_match.h
 	$(CC) $(CFLAGS) -std=c23 -o $@ test_rule_match.c ../src/rule_match.c
 
+withdraw_window: withdraw_window.c
+	$(CC) $(CFLAGS) -o $@ $< -lxcb
+
 clean:
-	$(RM) test_window test_window_wl test_color test_magnet send_moveresize test_edge_zone test_rule_match *.o
+	$(RM) test_window test_window_wl test_color test_magnet send_moveresize test_edge_zone test_rule_match withdraw_window *.o
 
 .PHONY: all clean

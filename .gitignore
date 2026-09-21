@@ -6,6 +6,7 @@ bspc
 *.o
 tests/test_window
 tests/test_window_wl
+tests/withdraw_window
 tests/test_stacking_borders
 tests/test_stress
 tests/test_color
