@@ -862,7 +862,7 @@ Global Settings
 	The minimum interval, in milliseconds, between two motion notify events while resizing a window. Lower it for applications that redraw slowly while being resized, without making moves jumpy. Defaults to *17*.
 
 'pointer_modifier'::
-	Keyboard modifier used for moving or resizing windows. Accept the following values: *shift*, *control*, *lock*, *mod1*, *mod2*, *mod3*, *mod4*, *mod5*.
+	Keyboard modifier used for moving or resizing windows. Accept the following values: *shift*, *control*, *lock*, *mod1*, *mod2*, *mod3*, *mod4*, *mod5*. *alt*, *ctrl* and *super* are accepted too, as in sxhkd and 'keybind': they stand for *mod1*, *control* and *mod4*, where those keys sit in a standard keyboard map, and reading the setting back gives *mod1*, *control* or *mod4*.
 
 'pointer_action1'::
 'pointer_action2'::
