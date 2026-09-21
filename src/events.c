@@ -230,6 +230,20 @@ void unmap_notify(void *evt)
 		return;
 
 	set_window_state(e->window, BSP_WM_STATE_WITHDRAWN);
+
+	/* The properties this window manager owns go with the withdrawal. EWMH
+	 * only asks us to leave them in place when the window manager itself is
+	 * shutting down, so that a restarted one finds its state again.
+	 *
+	 * Left behind, _NET_WM_DESKTOP keeps claiming a desktop for a window
+	 * nobody manages any more, and adopt_orphans() takes that claim at face
+	 * value on the next restart: the window is mapped again behind the back
+	 * of a client that believes it is hidden, so nothing ever paints it.
+	 * Hiding to the system tray is a withdrawal, which is why tray
+	 * applications came back as empty frames after every restart. */
+	xcb_delete_property(dpy, e->window, ewmh->_NET_WM_DESKTOP);
+	xcb_delete_property(dpy, e->window, ewmh->_NET_WM_STATE);
+
 	unmanage_window(e->window);
 }
 

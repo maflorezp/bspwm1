@@ -566,9 +566,25 @@ void adopt_orphans(void)
 	for (int i = 0; i < len; i++) {
 		uint32_t idx;
 		bspwm_wid_t win = wins[i];
-		if (xcb_ewmh_get_wm_desktop_reply(ewmh, xcb_ewmh_get_wm_desktop(ewmh, win), &idx, NULL) == 1) {
-			schedule_window(win);
+		if (xcb_ewmh_get_wm_desktop_reply(ewmh, xcb_ewmh_get_wm_desktop(ewmh, win), &idx, NULL) != 1) {
+			continue;
 		}
+
+		/* Only what is on screen. An unmapped window was withdrawn or
+		 * iconified by whoever managed it last, and putting it back on
+		 * screen is not our call: its client believes it is hidden and
+		 * will not paint it. The check stays worthwhile even though a
+		 * withdrawal now drops _NET_WM_DESKTOP, because windows
+		 * withdrawn under an older window manager still carry it. */
+		xcb_get_window_attributes_reply_t *wa =
+			xcb_get_window_attributes_reply(dpy, xcb_get_window_attributes(dpy, win), NULL);
+		bool viewable = (wa != NULL && wa->map_state == XCB_MAP_STATE_VIEWABLE);
+		free(wa);
+		if (!viewable) {
+			continue;
+		}
+
+		schedule_window(win);
 	}
 
 	free(qtr);
