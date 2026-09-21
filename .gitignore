@@ -12,6 +12,7 @@ tests/test_stress
 tests/test_color
 tests/test_magnet
 tests/test_edge_zone
+tests/test_pointer_increment
 tests/send_moveresize
 tests/test_rule_match
 

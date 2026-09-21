@@ -39,6 +39,7 @@
 #include "pointer.h"
 #include "color.h"
 #include "magnet.h"
+#include "pointer_increment.h"
 
 uint16_t num_lock;
 uint16_t caps_lock;
@@ -555,6 +556,13 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, 
 	if (magnet_on)
 		magnet_stack = xcb_query_tree_reply(dpy, xcb_query_tree(dpy, root), NULL);
 
+	/* Stepped drags: the step the held modifiers ask for (0 while the drag
+	 * is free), the pointer position the steps count from, and how far the
+	 * window has been taken from there. See pointer_increment.h. */
+	int step = 0;
+	int16_t anchor_x = pos.x, anchor_y = pos.y;
+	int stepped_x = 0, stepped_y = 0;
+
 	do {
 		free(evt);
 		evt = xcb_wait_for_event(dpy);
@@ -576,8 +584,36 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, 
 			int16_t dx = e->root_x - last_motion_x;
 			int16_t dy = e->root_y - last_motion_y;
 
+			int held_step = pointer_increment_step(e->state, num_lock | caps_lock | scroll_lock,
+			                                       pointer_increment_modifier, pointer_increment,
+			                                       pointer_big_increment_modifier,
+			                                       pointer_big_increment);
+			if (held_step != step) {
+				/* A modifier went down, came up or changed: count again from
+				 * where the pointer was before this motion, so the window does
+				 * not jump when the stride changes. */
+				step = held_step;
+				anchor_x = last_motion_x;
+				anchor_y = last_motion_y;
+				stepped_x = stepped_y = 0;
+				/* Back to a free drag, the magnet picks up from wherever the
+				 * steps left the window rather than from where it let go. */
+				if (step == 0 && magnet_on)
+					magnet_free = magnet_box_of(n);
+			}
+			if (step > 0) {
+				int want_x = pointer_increment_snap(e->root_x - anchor_x, step);
+				int want_y = pointer_increment_snap(e->root_y - anchor_y, step);
+				dx = (int16_t) (want_x - stepped_x);
+				dy = (int16_t) (want_y - stepped_y);
+				stepped_x = want_x;
+				stepped_y = want_y;
+			}
+
 			if (pac == ACTION_MOVE) {
-				if (magnet_on) {
+				/* A stepped drag asked for exact positions: neither the magnet
+				 * nor an Aero Snap zone gets to move it somewhere else. */
+				if (magnet_on && step == 0) {
 					magnet_free.x1 += dx;
 					magnet_free.x2 += dx;
 					magnet_free.y1 += dy;
@@ -590,7 +626,10 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, 
 				}
 
 				/* Check for edge snap zones while dragging */
-				if (edge_snap_enabled) {
+				if (edge_snap_enabled && step > 0) {
+					hide_snap_preview();
+					final_snap_zone = SNAP_NONE;
+				} else if (edge_snap_enabled) {
 					bspwm_point_t cur_pos = {e->root_x, e->root_y};
 					monitor_t *m = monitor_from_point(cur_pos);
 					/* Only process snap if pointer is on a valid monitor */
@@ -606,11 +645,15 @@ void track_pointer(coordinates_t loc, pointer_action_t pac, resize_handle_t rh, 
 			} else if (n && n->client) {
 				client_t *c = n->client;
 				bool absolute = SHOULD_HONOR_SIZE_HINTS(c->honor_size_hints, c->state);
-				if (magnet_on) {
+				if (magnet_on && step == 0) {
 					magnet_resize(&loc, rh, &magnet_free, e->root_x, e->root_y,
 					              dx, dy, absolute);
 				} else if (absolute) {
-					resize_client(&loc, rh, e->root_x, e->root_y, false);
+					/* Stepped, the pointer counts as if it had travelled whole
+					 * steps from the anchor. */
+					int16_t px = step > 0 ? (int16_t) (anchor_x + stepped_x) : e->root_x;
+					int16_t py = step > 0 ? (int16_t) (anchor_y + stepped_y) : e->root_y;
+					resize_client(&loc, rh, px, py, false);
 				} else {
 					resize_client(&loc, rh, dx, dy, true);
 				}

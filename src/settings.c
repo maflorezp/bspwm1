@@ -49,6 +49,10 @@ tightness_t directional_focus_tightness;
 uint16_t pointer_modifier;
 uint32_t pointer_motion_interval;
 uint32_t pointer_motion_interval_resize;
+int pointer_increment;
+int pointer_big_increment;
+uint16_t pointer_increment_modifier;
+uint16_t pointer_big_increment_modifier;
 pointer_action_t pointer_actions[3];
 int8_t mapping_events_count;
 
@@ -125,6 +129,10 @@ void load_settings(void)
 	pointer_modifier = POINTER_MODIFIER;
 	pointer_motion_interval = POINTER_MOTION_INTERVAL;
 	pointer_motion_interval_resize = POINTER_MOTION_INTERVAL_RESIZE;
+	pointer_increment = POINTER_INCREMENT;
+	pointer_big_increment = POINTER_BIG_INCREMENT;
+	pointer_increment_modifier = POINTER_INCREMENT_MODIFIER;
+	pointer_big_increment_modifier = POINTER_BIG_INCREMENT_MODIFIER;
 	pointer_actions[0] = ACTION_MOVE;
 	pointer_actions[1] = ACTION_RESIZE_SIDE;
 	pointer_actions[2] = ACTION_RESIZE_CORNER;

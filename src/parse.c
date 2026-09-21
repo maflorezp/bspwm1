@@ -336,14 +336,20 @@ static const struct {
    const char *key;
    uint16_t mask;
 } modifier_table[] = {
+   /* Sorted, for the binary search below. alt, ctrl and super are the names
+    * sxhkd and bspc keybind use; they stand for the modifiers those keys sit
+    * on in a standard keyboard map, and read back under their X names. */
+   {"alt", BSP_MOD_MASK_1},
    {"control", BSP_MOD_MASK_CONTROL},
+   {"ctrl", BSP_MOD_MASK_CONTROL},
    {"lock", BSP_MOD_MASK_LOCK},
    {"mod1", BSP_MOD_MASK_1},
    {"mod2", BSP_MOD_MASK_2},
    {"mod3", BSP_MOD_MASK_3},
    {"mod4", BSP_MOD_MASK_4},
    {"mod5", BSP_MOD_MASK_5},
-   {"shift", BSP_MOD_MASK_SHIFT}
+   {"shift", BSP_MOD_MASK_SHIFT},
+   {"super", BSP_MOD_MASK_4}
 };
 
 bool parse_modifier_mask(char *s, uint16_t *m)

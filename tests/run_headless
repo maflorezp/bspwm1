@@ -430,6 +430,10 @@ done
 
 . ./headless/rule_match.sh
 
+. ./headless/pointer_increments.sh
+
+. ./headless/modifier_aliases.sh
+
 echo ""
 echo "== Withdrawn windows =="
 

@@ -2,12 +2,12 @@
 .\"     Title: bspwm
 .\"    Author: [see the "Author" section]
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: 09/17/2026
+.\"      Date: 09/21/2026
 .\"    Manual: Bspwm Manual
 .\"    Source: Bspwm v1.6.2
 .\"  Language: English
 .\"
-.TH "BSPWM" "1" "09/17/2026" "Bspwm v1\&.6\&.2" "Bspwm Manual"
+.TH "BSPWM" "1" "09/21/2026" "Bspwm v1\&.6\&.2" "Bspwm Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -1424,6 +1424,20 @@ Keyboard modifier used for moving or resizing windows\&. Accept the following va
 \fBmod3\fR,
 \fBmod4\fR,
 \fBmod5\fR\&.
+\fBalt\fR,
+\fBctrl\fR
+and
+\fBsuper\fR
+are accepted too, as in sxhkd and
+\fIkeybind\fR: they stand for
+\fBmod1\fR,
+\fBcontrol\fR
+and
+\fBmod4\fR, where those keys sit in a standard keyboard map, and reading the setting back gives
+\fBmod1\fR,
+\fBcontrol\fR
+or
+\fBmod4\fR\&.
 .RE
 .PP
 \fIpointer_action1\fR, \fIpointer_action2\fR, \fIpointer_action3\fR
@@ -1437,6 +1451,33 @@ Action performed when pressing
 \fBresize_corner\fR,
 \fBfocus\fR,
 \fBnone\fR\&.
+.RE
+.PP
+\fIpointer_increment\fR, \fIpointer_big_increment\fR
+.RS 4
+Strides, in pixels, of a stepped move or resize\&. While a window is dragged with
+\fIpointer_modifier\fR, holding
+\fIpointer_increment_modifier\fR
+makes it advance in steps of
+\fIpointer_increment\fR, and holding
+\fIpointer_big_increment_modifier\fR
+in steps of
+\fIpointer_big_increment\fR\&. The steps count from where the window was when the modifier went down, to the nearest step, so an odd size stays odd and only the stride changes\&. Neither the edge magnet nor the edge snap zones move a window during a stepped drag\&. Must be at least
+\fB1\fR\&. X11 only\&. Default to
+\fB10\fR
+and
+\fB50\fR\&.
+.RE
+.PP
+\fIpointer_increment_modifier\fR, \fIpointer_big_increment_modifier\fR
+.RS 4
+Keyboard modifiers that turn a pointer drag into a stepped one, pressed once the drag has started\&. When both are held, the big step wins\&. Accept the same values as
+\fIpointer_modifier\fR, plus
+\fBnone\fR
+to disable the step\&. X11 only\&. Default to
+\fBshift\fR
+and
+\fBcontrol\fR\&.
 .RE
 .PP
 \fIclick_to_focus\fR

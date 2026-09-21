@@ -7,6 +7,7 @@ all: test_edge_zone
 all: send_moveresize
 all: test_rule_match
 all: withdraw_window
+all: test_pointer_increment
 
 test_window: test_window.c
 	$(CC) $(CFLAGS) -o $@ $< -lxcb -lxcb-icccm
@@ -32,7 +33,10 @@ test_rule_match: test_rule_match.c ../src/rule_match.c ../src/rule_match.h
 withdraw_window: withdraw_window.c
 	$(CC) $(CFLAGS) -o $@ $< -lxcb
 
+test_pointer_increment: test_pointer_increment.c ../src/pointer_increment.c ../src/pointer_increment.h
+	$(CC) $(CFLAGS) -std=c23 -o $@ test_pointer_increment.c ../src/pointer_increment.c
+
 clean:
-	$(RM) test_window test_window_wl test_color test_magnet send_moveresize test_edge_zone test_rule_match withdraw_window *.o
+	$(RM) test_window test_window_wl test_color test_magnet send_moveresize test_edge_zone test_rule_match withdraw_window test_pointer_increment *.o
 
 .PHONY: all clean
