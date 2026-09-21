@@ -869,6 +869,14 @@ Global Settings
 'pointer_action3'::
 	Action performed when pressing 'pointer_modifier' + 'button<n>'. Accept the following values: *move*, *resize_side*, *resize_corner*, *focus*, *none*.
 
+'pointer_increment'::
+'pointer_big_increment'::
+	Strides, in pixels, of a stepped move or resize. While a window is dragged with 'pointer_modifier', holding 'pointer_increment_modifier' makes it advance in steps of 'pointer_increment', and holding 'pointer_big_increment_modifier' in steps of 'pointer_big_increment'. The steps count from where the window was when the modifier went down, to the nearest step, so an odd size stays odd and only the stride changes. Neither the edge magnet nor the edge snap zones move a window during a stepped drag. Must be at least *1*. X11 only. Default to *10* and *50*.
+
+'pointer_increment_modifier'::
+'pointer_big_increment_modifier'::
+	Keyboard modifiers that turn a pointer drag into a stepped one, pressed once the drag has started. When both are held, the big step wins. Accept the same values as 'pointer_modifier', plus *none* to disable the step. X11 only. Default to *shift* and *control*.
+
 'click_to_focus'::
 	Button used for focusing a window (or a monitor). The possible values are: *button1*, *button2*, *button3*, *any*, *none*. Defaults to *button1*.
 

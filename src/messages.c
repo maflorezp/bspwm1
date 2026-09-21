@@ -2066,6 +2066,25 @@ void set_setting(coordinates_t loc, char *name, char *value, FILE *rsp)
 			fail(rsp, "config: %s: Invalid value: '%s'.\n", name, value);
 			return;
 		}
+	} else if (streq("pointer_increment", name) || streq("pointer_big_increment", name)) {
+		int step;
+		char end;
+		if (sscanf(value, "%d%c", &step, &end) != 1 || step < 1) {
+			fail(rsp, "config: %s: Invalid value: '%s' (must be a positive number of pixels).\n", name, value);
+			return;
+		}
+		*(streq("pointer_increment", name) ? &pointer_increment : &pointer_big_increment) = step;
+	} else if (streq("pointer_increment_modifier", name) || streq("pointer_big_increment_modifier", name)) {
+		/* Unlike pointer_modifier, these take none: without a modifier the
+		 * drag is simply never stepped, whereas a drag modifier of none would
+		 * turn every click on a window into a drag. */
+		uint16_t mod = 0;
+		if (!streq("none", value) && !parse_modifier_mask(value, &mod)) {
+			fail(rsp, "config: %s: Invalid value: '%s'.\n", name, value);
+			return;
+		}
+		*(streq("pointer_increment_modifier", name) ? &pointer_increment_modifier
+		                                            : &pointer_big_increment_modifier) = mod;
 	} else if (streq("pointer_motion_interval", name)) {
 		if (sscanf(value, "%u", &pointer_motion_interval) != 1) {
 			fail(rsp, "config: %s: Invalid value: '%s'.\n", name, value);
@@ -2373,6 +2392,18 @@ void get_setting(coordinates_t loc, char *name, FILE* rsp)
 		print_ignore_request(ignore_ewmh_fullscreen, rsp);
 	} else if (streq("pointer_modifier", name)) {
 		print_modifier_mask(pointer_modifier, rsp);
+	} else if (streq("pointer_increment", name)) {
+		fprintf(rsp, "%i", pointer_increment);
+	} else if (streq("pointer_big_increment", name)) {
+		fprintf(rsp, "%i", pointer_big_increment);
+	} else if (streq("pointer_increment_modifier", name) || streq("pointer_big_increment_modifier", name)) {
+		uint16_t mod = streq("pointer_increment_modifier", name) ? pointer_increment_modifier
+		                                                         : pointer_big_increment_modifier;
+		if (mod == 0) {
+			fprintf(rsp, "none");
+		} else {
+			print_modifier_mask(mod, rsp);
+		}
 	} else if (streq("click_to_focus", name)) {
 		print_button_index(click_to_focus, rsp);
 	} else if (streq("pointer_motion_interval", name)) {

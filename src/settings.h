@@ -30,6 +30,10 @@
 #define POINTER_MODIFIER         BSP_MOD_MASK_4
 #define POINTER_MOTION_INTERVAL  17
 #define POINTER_MOTION_INTERVAL_RESIZE  POINTER_MOTION_INTERVAL
+#define POINTER_INCREMENT               10
+#define POINTER_BIG_INCREMENT           50
+#define POINTER_INCREMENT_MODIFIER      BSP_MOD_MASK_SHIFT
+#define POINTER_BIG_INCREMENT_MODIFIER  BSP_MOD_MASK_CONTROL
 #define EXTERNAL_RULES_COMMAND   ""
 #define STATUS_PREFIX            "W"
 
@@ -108,6 +112,10 @@ extern tightness_t directional_focus_tightness;
 extern uint16_t pointer_modifier;
 extern uint32_t pointer_motion_interval;
 extern uint32_t pointer_motion_interval_resize;
+extern int pointer_increment;
+extern int pointer_big_increment;
+extern uint16_t pointer_increment_modifier;
+extern uint16_t pointer_big_increment_modifier;
 extern pointer_action_t pointer_actions[3];
 extern int8_t mapping_events_count;
 
