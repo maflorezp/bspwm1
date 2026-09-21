@@ -1,3 +1,62 @@
+# v1.6.3
+
+The first release of this fork as a project of its own. It grew out of
+bspwm1 v1.6.2 and goes its own way from here: pointer features for floating
+windows, rules matched on window properties, four pull requests from the
+original bspwm that never landed there, and fixes for bugs inherited from
+bspwm1.
+
+### Added
+
+- **Stepped moves and resizes** (X11). Once a pointer drag is under way,
+  holding `pointer_increment_modifier` (*shift*) moves or resizes the window in
+  steps of `pointer_increment` (*10* px), and holding
+  `pointer_big_increment_modifier` (*control*) in steps of
+  `pointer_big_increment` (*50* px); the big one wins when both are held. The
+  steps count from where the window was when the modifier went down, so an odd
+  size stays odd and only the stride changes. The edge magnet and the snap
+  zones stay out of a stepped drag.
+- **Magnetic edges** (X11). With `magnet_threshold` above *0*, the edges of a
+  floating window stick to the work area and to the edges of nearby windows
+  while it is moved or resized with the pointer. Edges hidden under other
+  windows do not attract. Keep dragging to pull free.
+- **Configurable edge snap zones.** `edge_snap_zone_ratio` turns the corners
+  into quarter-screen snaps and splits the top and bottom edges into halves,
+  with a centred band on the top edge that maximizes. *0* keeps the classic
+  zones.
+- **Edge snap preview colour and opacity** (X11): `edge_snap_preview_color`
+  and `edge_snap_preview_opacity`. The preview is translucent under a
+  compositor.
+- **Rules matched on window properties.** Besides `class:instance:name`,
+  `bspc rule -a` takes conditions on `class`, `instance`, `name`, `type`,
+  `role` and `transient`: `name=notes` is compared as written, `name~=^vim`
+  is a POSIX extended regular expression, and a trailing `/i` ignores case, as
+  in `class~=^crx_/i`. A window matches when every condition holds.
+- **Modifier aliases.** `alt`, `ctrl` and `super` are accepted wherever a
+  pointer setting takes a modifier, as sxhkd and `bspc keybind` already do.
+  Reading the setting back still gives `mod1`, `control` or `mod4`.
+- From pull requests to the original bspwm, with their authors:
+  **`_NET_WM_MOVERESIZE` move requests** (Jeffrey McAteer), extended here to
+  resizes and cancels; **`pointer_motion_interval_resize`** (Loic Coyle);
+  **iconify through `WM_CHANGE_STATE`, restored on activation** (nwwdles); and
+  **no raising the focused window on desktop or monitor focus** (Sean C.
+  Farley).
+
+### Fixed
+
+- **Tray applications came back as empty frames after `bspc wm -r`.** A
+  window its client withdraws kept `_NET_WM_DESKTOP`, and the restart adopted
+  and mapped it behind the client's back, where nothing ever painted it. The
+  frame took the focus and, with a sticky rule, followed the user across
+  desktops. A withdrawal now drops the properties the window manager owns,
+  and a restart only adopts windows that are on screen.
+- **New windows opened on the previous desktop**: the `automatic` node
+  selector matched the wrong way round.
+- **A window moved to another monitor with `--follow` lost the focus.**
+- **Snapped windows and their preview could spill out of the work area.**
+- **A `_NET_WM_MOVERESIZE` move request with no button held started a move.**
+- **`edge_snap_zone_ratio` accepted NaN.**
+
 # v1.6.2
 
 Bug-fix release for the wlroots compositor, from multi-window use and a
