@@ -1,13 +1,15 @@
-<h1 align="center">bspwm1 · maflorezp fork</h1>
+<h1 align="center">bspwm-ng</h1>
 
 <p align="center">
-Floating windows that <b>stick while you drag them</b>, an Aero Snap you can tune,
-and window rules that match on more than a class name.
+The continuation of bspwm: floating windows that <b>stick while you drag them</b>
+and move in exact steps, an Aero Snap you can tune, and window rules that match on
+more than a class name.
 </p>
 
 <p align="center">
 <a href="#edge-magnetism">Magnetism</a> ·
 <a href="#aero-snap-zones-and-preview">Snap zones</a> ·
+<a href="#stepped-drags">Steps</a> ·
 <a href="#window-rules-with-properties">Rules</a> ·
 <a href="#ported-fixes">Ported fixes</a> ·
 <a href="#install">Install</a> ·
@@ -17,12 +19,13 @@ and window rules that match on more than a class name.
 
 ---
 
-A fork of [rotkonetworks/bspwm1](https://github.com/rotkonetworks/bspwm1), itself a hardened fork
-of [baskerville/bspwm](https://github.com/baskerville/bspwm). Everything upstream does is still
-here — its own README is [right next door](README.bspwm1.md). What follows is what this fork adds.
+bspwm-ng grew out of [rotkonetworks/bspwm1](https://github.com/rotkonetworks/bspwm1), itself a
+hardened fork of [baskerville/bspwm](https://github.com/baskerville/bspwm), and goes its own way
+from here. Everything bspwm1 does is still in it — its README is [right next door](README.bspwm1.md).
+What follows is what bspwm-ng adds.
 
-Every feature below ships with tests: **305 of them**, headless, under `make test`. Each one also
-lives on its own branch cut from upstream, ready to be sent as a pull request.
+Every feature below ships with tests: **352 of them**, headless, under `make test`. Each change
+lives on its own branch before it is merged into `local`, the branch releases are cut from.
 
 <!-- GIF principal: quítale el comentario cuando lo grabes (guía: docs/maflorezp/2026-09-17-grabar-los-gif.md)
 <p align="center"><img src="docs/media/demo.gif" alt="Demo" width="820"></p>
@@ -77,6 +80,25 @@ bspc config edge_snap_preview_opacity 25     # 0-100; a compositor makes it tran
 
 X11 only.
 
+## Stepped drags
+
+Once a drag is under way, hold **Shift** and the window moves or resizes in steps of 10 pixels;
+hold **Control** for steps of 50. The steps count from where the window was when you pressed the
+key, so an odd size stays odd and only the stride changes. Let go and it follows the pointer
+again. The magnet and the snap zones stay out of a stepped drag.
+
+```sh
+bspc config pointer_increment              10
+bspc config pointer_big_increment          50
+bspc config pointer_increment_modifier     shift     # none turns it off
+bspc config pointer_big_increment_modifier control
+```
+
+Modifiers can be written as `alt`, `ctrl` and `super`, here and in `pointer_modifier`, the same
+names sxhkd uses.
+
+X11 only.
+
 ## Window rules with properties
 
 Upstream matches a window by `CLASS:INSTANCE:NAME`, compared literally. That means one rule per
@@ -127,29 +149,33 @@ Four pull requests that have been waiting upstream, rebased onto bspwm1 and give
 | [#1035](https://github.com/baskerville/bspwm/pull/1035) | `WM_CHANGE_STATE`: minimize and restore work with taskbars and pagers |
 | [#1183](https://github.com/baskerville/bspwm/pull/1183) | `_NET_WM_MOVERESIZE`: clients that draw their own title bar can move and resize themselves |
 
-And two bugs found in bspwm1 itself:
+And three bugs fixed along the way:
 
 - The focus stayed behind when a window was sent to another monitor with `follow=on`.
 - The `automatic` node selector matched the wrong way round, so a new window could land on the
   desktop you had just left.
+- A window its client had withdrawn — a tray application hiding in the tray, say — came back after
+  `bspc wm -r` as an empty frame that took the focus and followed you across desktops.
 
 ## Install
 
 ### Arch Linux
 
 ```sh
-yay -S bspwm1-maflorezp-git
+yay -S bspwm-ng-git
 ```
 
-It replaces `bspwm` and `bspwm1`, and tracks the `local` branch — every feature above, merged.
+It replaces `bspwm`, `bspwm1` and the package's old name, `bspwm1-maflorezp-git`, and tracks the
+`local` branch — every feature above, merged. The binaries are still `bspwm` and `bspc`, so your
+`bspwmrc`, sxhkd bindings and scripts keep working as they are.
 
 ### From source
 
 ```sh
-git clone -b local https://github.com/maflorezp/bspwm1.git
-cd bspwm1
+git clone -b local https://github.com/maflorezp/bspwm-ng.git
+cd bspwm-ng
 make && sudo make install
-make test          # 305 headless tests
+make test          # 352 headless tests
 ```
 
 Needs `libxcb`, `xcb-util`, `xcb-util-keysyms`, `xcb-util-wm` and `libxkbcommon`. The wlroots
@@ -165,6 +191,10 @@ bspc config edge_snap_zone_ratio           0.0       # 0.2 gives generous corner
 bspc config edge_snap_preview_color        '#E6007A'
 bspc config edge_snap_preview_opacity      25
 bspc config pointer_motion_interval_resize 17        # raise it for slow-redrawing apps
+bspc config pointer_increment              10
+bspc config pointer_big_increment          50
+bspc config pointer_increment_modifier     shift
+bspc config pointer_big_increment_modifier control
 ```
 
 `man bspwm` documents each one, with the exact geometry of the snap zones and the full grammar of
@@ -173,7 +203,7 @@ the rule conditions.
 ## Lineage
 
 ```
-baskerville/bspwm  →  rotkonetworks/bspwm1  →  maflorezp/bspwm1
+baskerville/bspwm  →  rotkonetworks/bspwm1  →  maflorezp/bspwm-ng
     the original      hardening, wlroots       everything above
 ```
 
