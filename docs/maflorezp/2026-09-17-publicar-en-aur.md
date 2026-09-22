@@ -1,10 +1,15 @@
-# Publicar `bspwm1-maflorezp-git` en AUR
+# Publicar `bspwm-ng-git` en AUR
 
-El PKGBUILD que se publica vive en `pkg/arch/bspwm1-maflorezp-git/`, junto al `.SRCINFO`. Es el
+> **Cambio de nombre (2026-09-21).** Hasta la `v1.6.3` el paquete se llamó `bspwm1-maflorezp-git`
+> y el repo `maflorezp/bspwm1`. El paquete nuevo lleva `replaces` y `conflicts` del viejo, y el viejo
+> se fusiona en el nuevo con un *merge request* desde la web de AUR (Package Actions → Submit Request
+> → Merge), que es lo que traslada votos y comentarios. GitHub redirige la URL vieja del repo.
+
+El PKGBUILD que se publica vive en `pkg/arch/bspwm-ng-git/`, junto al `.SRCINFO`. Es el
 único; la copia que había en `~/.dotFiles/pkgbuilds/` con su `build.sh` se retiró el 2026-09-18,
 porque compilaba exactamente lo mismo que AUR.
 
-**Publicado el 2026-09-18.** El clon de AUR está en `/websites/personal/aur/bspwm1-maflorezp-git`.
+**`bspwm1-maflorezp-git` se publicó el 2026-09-18; `bspwm-ng-git`, el 2026-09-21.** El clon de AUR está en `/websites/personal/aur/bspwm-ng-git`.
 
 Comprobado el 2026-09-17: desde un directorio vacío, `makepkg` clona el repo público, compila y
 genera el paquete con `bspwm`, `bspc` y los dos manuales. Es decir, funciona tal cual para
@@ -32,11 +37,16 @@ cualquiera que lo instale, no sólo aquí.
 AUR es un repositorio git por paquete. El primer push crea el paquete.
 
 ```sh
-git clone ssh://aur@aur.archlinux.org/bspwm1-maflorezp-git.git \
-    /websites/personal/aur/bspwm1-maflorezp-git
-cd /websites/personal/aur/bspwm1-maflorezp-git
+git clone ssh://aur@aur.archlinux.org/bspwm-ng-git.git \
+    /websites/personal/aur/bspwm-ng-git
+cd /websites/personal/aur/bspwm-ng-git
 
-cp /websites/personal/bspwm/pkg/arch/bspwm1-maflorezp-git/{PKGBUILD,.SRCINFO} .
+cp /websites/personal/bspwm/pkg/arch/bspwm-ng-git/PKGBUILD .
+# El pkgver sale del commit que se publica (ver «Mantenimiento»), nunca del PKGBUILD del fork.
+PV=$(git -C /websites/personal/bspwm describe --long --tags --abbrev=7 local |
+     sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g')
+sed -i "s/^pkgver=.*/pkgver=$PV/" PKGBUILD
+makepkg --printsrcinfo > .SRCINFO
 
 git add PKGBUILD .SRCINFO
 git commit -m "initial release"
@@ -49,7 +59,7 @@ si aparecen.
 ## Instalar y actualizar, aquí y en los otros servidores
 
 ```sh
-yay -S bspwm1-maflorezp-git   # instalar
+yay -S bspwm-ng-git   # instalar
 yay -Syu --devel              # actualizar cuando la rama local avance
 ```
 
@@ -57,7 +67,7 @@ Cada instalación clona la rama `local` en ese momento, así que todos acaban en
 `local` tenga ese día. El paquete sustituye a `bspwm` y a `bspwm1`.
 
 `--devel` es lo que hace que yay mire el último commit de la rama; sin esa opción se fía del
-`pkgver` publicado en AUR y no ve los avances de `local`. `yay -S bspwm1-maflorezp-git` también
+`pkgver` publicado en AUR y no ve los avances de `local`. `yay -S bspwm-ng-git` también
 actualiza: no compara versiones, recompila el paquete desde `local` y no toca el resto del sistema.
 
 ## La identidad de los commits
@@ -91,7 +101,7 @@ siguientes ya salen bien: hay un `includeIf` por carpeta en `~/.gitconfig` que f
 - Sí conviene rehacer el `.SRCINFO` y empujarlo cuando cambien las dependencias, la descripción o
   la rama de origen:
   ```sh
-  cd /websites/personal/bspwm/pkg/arch/bspwm1-maflorezp-git
+  cd /websites/personal/bspwm/pkg/arch/bspwm-ng-git
   makepkg --printsrcinfo > .SRCINFO
   ```
 - **Sin `check()` a propósito.** `make test` necesita Xvfb y la prueba de iconify falla de vez en
@@ -100,5 +110,5 @@ siguientes ya salen bien: hay un `includeIf` por carpeta en `~/.gitconfig` que f
   arregle, se puede añadir con `checkdepends=('xorg-server-xvfb')`.
 - Antes de cada push a AUR, la prueba en limpio:
   ```sh
-  cd $(mktemp -d) && cp /websites/personal/bspwm/pkg/arch/bspwm1-maflorezp-git/PKGBUILD . && makepkg
+  cd $(mktemp -d) && cp /websites/personal/bspwm/pkg/arch/bspwm-ng-git/PKGBUILD . && makepkg
   ```

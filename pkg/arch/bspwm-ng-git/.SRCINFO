@@ -1,8 +1,8 @@
-pkgbase = bspwm1-maflorezp-git
+pkgbase = bspwm-ng-git
 	pkgdesc = bspwm fork with live edge magnetism, stepped drags, configurable Aero Snap and rules matched on window properties
-	pkgver = 1.6.2.r129.gd7f5da8
+	pkgver = 1.6.3.r0.g659ee9c
 	pkgrel = 1
-	url = https://github.com/maflorezp/bspwm1
+	url = https://github.com/maflorezp/bspwm-ng
 	arch = x86_64
 	license = BSD-2-Clause
 	makedepends = git
@@ -16,7 +16,9 @@ pkgbase = bspwm1-maflorezp-git
 	provides = bspwm1
 	conflicts = bspwm
 	conflicts = bspwm1
-	source = bspwm1::git+https://github.com/maflorezp/bspwm1.git#branch=local
+	conflicts = bspwm1-maflorezp-git
+	replaces = bspwm1-maflorezp-git
+	source = bspwm-ng::git+https://github.com/maflorezp/bspwm-ng.git#branch=local
 	sha256sums = SKIP
 
-pkgname = bspwm1-maflorezp-git
+pkgname = bspwm-ng-git
